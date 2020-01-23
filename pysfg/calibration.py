@@ -9,7 +9,7 @@ class Victor:
         central_wl: float, central wavelength of the grating
         vis_wl: float, visible wavelength
         calib_central_wl: float, central wl during calibration
-        calib_coeff: calibration coefficients. Calibration coeff in increasing order.
+        calib_coeff: calibration coefficients. Calibration coeff in decreasing order.
         numberOfPixel: horizontal number of camera pixels
         """
         self.central_wl = float(central_wl)
@@ -38,4 +38,6 @@ class Victor:
     def wavenumber(self):
         """The spectral wavenumber in 1/cm after subtraction of the upconversion."""
 
-        return 10**7/(1/(1/self.wavelength - 1/self.vis_wl))
+        # As the calibration is not that precise anyways,
+        # rounding on 2 digits is more then enough
+        return np.round(10**7/(1/(1/self.wavelength - 1/self.vis_wl)), 2)

@@ -18,17 +18,18 @@ class Spectrum():
         self.intensity = intensity
         self.baseline = baseline
         self.norm = norm
+        self.wavenumber = wavenumber
 
 
     @property
     def intensity(self):
+        """Intensity values of the spectrum. Must be a 1D array"""
         return self._intensity
 
     @intensity.setter
     def intensity(self, intensity):
         if len(np.shape(intensity)) != 1:
             raise ValueError("Intensity must be 1 D array.")
-
         self._intensity = np.array(intensity)
 
     @property
@@ -77,4 +78,19 @@ class Spectrum():
         """Normalized intensity"""
         return self.basesubed / self.norm
 
+    @property
+    def wavenumber(self):
+        """Wavenumber values of the spectrum."""
+        return self._wavenumber
+
+    @wavenumber.setter
+    def wavenumber(self, wavenumber):
+        if isinstance(wavenumber, type(None)):
+            # The camera record nm. Thus wavenumber order is typically
+            # reversed. If we dont have the wavenumbers, we should
+            # atleast have the right order.
+            wavenumber = np.arange(self.shape[0], 0, -1)
+        if np.shape(wavenumber) != self.shape:
+            raise ValueError('Shape of wavenumber and intensity must match')
+        self._wavenumber = wavenumber
 

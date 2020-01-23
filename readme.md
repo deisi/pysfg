@@ -9,11 +9,10 @@ Second attempt in getting a useful python library for our SFG setups.
   `conda activate sfg`
 - Install this library in editable mode.
   `pip install --editable .`
-  
+- Add a kernel to the default jupyterlab environment
+  `ipython kernel install --user --name=sfg`
   
 # Usage
-- import pysfg
-
 ## Read Data
 ``` python
 import numpy as np

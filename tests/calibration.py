@@ -11,3 +11,4 @@ cV = pysfg.calibration.Victor(
     calib_central_wl,
     calib_coeff
 )
+print(cV.wavenumber)
