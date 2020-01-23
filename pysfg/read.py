@@ -8,7 +8,7 @@ PIXEL = 1600 # Number of pixel on camera
 SPECS = 3 # Number of spectra recorded
 
 
-def read_victor(fpath, kwargs_genfromtxt=None, sort_pp_times=True):
+def data_victor(fpath, kwargs_genfromtxt=None, sort_pp_times=True):
     """Read victor controller data.
 
     kwargs_genfromtxt: kwargs passed to numpy genfromtxt
@@ -18,7 +18,7 @@ def read_victor(fpath, kwargs_genfromtxt=None, sort_pp_times=True):
         kwargs_genfromtxt = {}
 
     # Read header
-    ret = read_victor_header(fpath)
+    ret = header_victor(fpath)
     pp_delays = ret['timedelay']
 
     # Read data
@@ -60,7 +60,7 @@ def read_victor(fpath, kwargs_genfromtxt=None, sort_pp_times=True):
     return ret
 
 
-def read_victor_header(fpath):
+def header_victor(fpath):
     """Read informaion from fileheader and return as dictionary."""
     ret = {}
     with open(fpath) as f:
@@ -128,7 +128,7 @@ def read_victor_header(fpath):
     return ret
 
 
-def read_folder(fpath):
+def folder_victor(fpath):
     """Read all .dat files from a folder.
 
     Returns a dict where file paths are the key and values are data dicts.
@@ -136,8 +136,10 @@ def read_folder(fpath):
     file_paths = glob.glob(fpath + '/*.dat')
 
     ret = {}
+    print('Reading: ')
     for ffile in file_paths:
-        ret[ffile] = read_victor(ffile)
+        print(ffile)
+        ret[ffile] = data_victor(ffile)
 
     return ret
 

@@ -3,20 +3,22 @@
 import numpy as np
 
 class Spectrum():
-    def __init__(self, intensity, baseline=None, norm=None):
+    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None, vis=None):
         """1D SFG Spectrum
 
-        Class to encapsulate the most common data structure of a static
-        SFG experiment
+        Class to encapsulate Static SFG data.
 
-        intensity: 1d Array of intensity values
-        baseline: 1d Array of baseline values
+        intensity: 1d array of intensity values
+        baseline: 1d array of baseline values
         norm: 1d array of norm values
+        wavelength: 1d array of wavelength
+        vis: central wavelength if the vis in nm
 
         """
         self.intensity = intensity
         self.baseline = baseline
         self.norm = norm
+
 
     @property
     def intensity(self):
@@ -74,3 +76,5 @@ class Spectrum():
     def normalized(self):
         """Normalized intensity"""
         return self.basesubed / self.norm
+
+
