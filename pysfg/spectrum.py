@@ -1,5 +1,5 @@
 """Module to deal with SFG Spectral Data"""
-# TODO: All methods lack a method of dealing with uncertainties
+# TODO: All classes lack a method of dealing with uncertainties
 
 import numpy as np
 import pandas as pd
@@ -27,9 +27,9 @@ class BaseSpectrum():
         if isinstance(baseline, type(None)):
             baseline = np.zeros_like(self.intensity)
         else:
-            base = np.ones_like(self.intensity) * baseline
+            baseline = np.ones_like(self.intensity) * baseline
         # I think this cant trigger
-        if np.shape(base) != self.shape:
+        if np.shape(baseline) != self.shape:
             raise ValueError('Shape of baseline and intensity must match')
         self._baseline = np.array(baseline)
 
@@ -71,7 +71,7 @@ class BaseSpectrum():
     @property
     def df(self):
         """Return a pandas dataframe."""
-        raise NotImplementedError
+        raise NotImplemented
 
     def to_json(self, *args, **kwargs):
         """Save spectrum to json with pd.Dataframe.to_json."""
@@ -184,10 +184,17 @@ class SpectrumPumpProbe(BaseSpectrum):
 
     @property
     def df(self):
-        #data = 
-        raise NotImplemented
-
-
+        """Return a long form pandas dataframe."""
+        dfs = []
+        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized'):
+            df = pd.DataFrame(
+                getattr(self, key),
+            )
+            df.insert(0, 'pp_delay', self.pp_delay)
+            df.insert(0, 'name', [key for i in range(len(self.pp_delay))])
+            dfs.append(df)
+        df = pd.concat(dfs)
+        return df.reset_index()
 
     def __sub__(self, other):
         """Returns a dictionary with all the important pump-probe data."""
