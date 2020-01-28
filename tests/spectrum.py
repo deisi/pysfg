@@ -14,7 +14,7 @@ background_spectrum_index = spectrum_index
 
 # Import Data
 all_data = pysfg.read.victor.folder(fpath)
-norm = pysfg.spectrum.read_json(norm_name)
+norm = pysfg.spectrum.json_to_spectrum(norm_name)
 # Select Data
 data = all_data[data_name]
 background_data = all_data[background_name]
