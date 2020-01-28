@@ -1,4 +1,5 @@
 """Module to deal with SFG Spectral Data"""
+# TODO: All methods lack a method of dealing with uncertainties
 
 import numpy as np
 import pandas as pd
@@ -25,9 +26,10 @@ class BaseSpectrum():
     def baseline(self, baseline):
         if isinstance(baseline, type(None)):
             baseline = np.zeros_like(self.intensity)
-        elif isinstance(baseline, int) or isinstance(baseline, float):
-            baseline = np.ones_like(self.intensity) * baseline
-        if np.shape(baseline) != np.shape(self.intensity):
+        else:
+            base = np.ones_like(self.intensity) * baseline
+        # I think this cant trigger
+        if np.shape(base) != self.shape:
             raise ValueError('Shape of baseline and intensity must match')
         self._baseline = np.array(baseline)
 
@@ -39,8 +41,9 @@ class BaseSpectrum():
     def norm(self, norm):
         if isinstance(norm, type(None)):
             norm = np.ones_like(self.intensity)
-        elif isinstance(norm, int) or isinstance(norm, float):
+        else:
             norm = np.ones_like(self.intensity) * norm
+        # I think this cant trigger
         if np.shape(norm) != np.shape(self.intensity):
             raise ValueError('Shape of norm and intensity must match')
         self._norm = np.array(norm)
@@ -88,7 +91,6 @@ class Spectrum(BaseSpectrum):
         """
         super().__init__(intensity, baseline, norm, wavenumber)
 
-
     @property
     def intensity(self):
         """Intensity values of the spectrum. Must be a 1D array"""
@@ -134,10 +136,10 @@ class SpectrumPumpProbe(BaseSpectrum):
     def __init__(
             self,
             intensity,
-            baseline,
-            norm,
-            wavenumber,
-            pp_delay,
+            baseline=None,
+            norm=None,
+            wavenumber=None,
+            pp_delay=None,
     ):
         """Pump-Probe Spectrum class. Intensity is a 2D numpy array.
 
@@ -148,12 +150,15 @@ class SpectrumPumpProbe(BaseSpectrum):
 
     @property
     def pp_delay(self):
-        self._pp_delay = pp_delay
+        return self._pp_delay
 
     @pp_delay.setter
     def pp_delay(self, pp_delay):
-        if not len(pp_delay) == self.shape[0] or len(np.shape(pp_delay)) != 1:
+        if isinstance(pp_delay, type(None)):
+            pp_delay = np.arange(np.shape[0])
+        elif not len(pp_delay) == self.shape[0] or len(np.shape(pp_delay)) != 1:
             raise ValueError('Len of pp_delays must match shape of intensity.')
+        self._pp_delay = pp_delay
 
     @property
     def intensity(self):
@@ -173,8 +178,50 @@ class SpectrumPumpProbe(BaseSpectrum):
 
     @wavenumber.setter
     def wavenumber(self, wavenumber):
-        if len(np.shape(wavenumber)) != 1 or len(wavenumber) == self.shape[1]:
+        if len(np.shape(wavenumber)) != 1 or len(wavenumber) != self.shape[1]:
             raise ValueError('Len of wavenumber must match shape of intensity')
         self._wavenumber = np.array(wavenumber)
 
+    @property
+    def df(self):
+        #data = 
+        raise NotImplemented
 
+
+
+    def __sub__(self, other):
+        """Returns a dictionary with all the important pump-probe data."""
+        if not np.all(self.wavenumber == other.wavenumber):
+            raise NotImplemented
+        if not np.all(self.pp_delay == other.pp_delay):
+            raise NotImplemented
+        return SpectrumBleach(
+            intensity=self.intensity - other.intensity,
+            baseline=self.baseline - other.baseline,
+            norm=self.norm - other.norm,
+            wavenumber=self.wavenumber,
+            pp_delay=self.pp_delay,
+            basesubed=self.basesubed - other.basesubed,
+            normalized=self.normalized - other.normalized,
+        )
+
+
+class SpectrumBleach():
+    def __init__(
+            self,
+            intensity=None,
+            baseline=None,
+            norm=None,
+            wavenumber=None,
+            pp_delay=None,
+            basesubed=None,
+            normalized=None
+    ):
+        self.intensity=intensity
+        self.baseline=baseline
+        self.norm=norm
+        self.wavenumber=wavenumber
+        self.pp_delay=pp_delay
+        self.basesubed=basesubed
+        self.normalized=normalized
+        # Todo implement getter and setter
