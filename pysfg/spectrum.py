@@ -1,9 +1,10 @@
 """Module to deal with SFG Spectral Data"""
 
 import numpy as np
+import pandas as pd
 
 class Spectrum():
-    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None, vis=None):
+    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None):
         """1D SFG Spectrum
 
         Class to encapsulate Static SFG data.
@@ -12,8 +13,6 @@ class Spectrum():
         baseline: 1d array of baseline values
         norm: 1d array of norm values
         wavelength: 1d array of wavelength
-        vis: central wavelength if the vis in nm
-
         """
         self.intensity = intensity
         self.baseline = baseline
@@ -40,13 +39,12 @@ class Spectrum():
     @baseline.setter
     def baseline(self, baseline):
         if isinstance(baseline, type(None)):
-            self._baseline = np.zeros_like(self.intensity)
+            baseline = np.zeros_like(self.intensity)
         elif isinstance(baseline, int) or isinstance(baseline, float):
-            self._baseline = np.ones_like(self.intensity) * baseline
-        else:
-            if np.shape(baseline) != np.shape(self.intensity):
-                raise ValueError('Baseline has not the same shape as intensity')
-            self._baseline = np.array(baseline)
+            baseline = np.ones_like(self.intensity) * baseline
+        elif np.shape(baseline) != np.shape(self.intensity):
+            raise ValueError('Baseline has not the same shape as intensity')
+        self._baseline = np.array(baseline)
 
     @property
     def norm(self):
@@ -55,13 +53,12 @@ class Spectrum():
     @norm.setter
     def norm(self, norm):
         if isinstance(norm, type(None)):
-            self._norm = np.ones_like(self.intensity)
+            norm = np.ones_like(self.intensity)
         elif isinstance(norm, int) or isinstance(norm, float):
-            self._norm = np.ones_like(self.intensity) * norm
-        else:
-            if np.shape(norm) != np.shape(self.intensity):
-                raise ValueError('Norm has not the same shape as intensity')
-            self._norm = np.array(norm)
+            norm = np.ones_like(self.intensity) * norm
+        elif np.shape(norm) != np.shape(self.intensity):
+            raise ValueError('Norm has not the same shape as intensity')
+        self._norm = np.array(norm)
 
     @property
     def shape(self):
@@ -91,6 +88,23 @@ class Spectrum():
             # atleast have the right order.
             wavenumber = np.arange(self.shape[0], 0, -1)
         if np.shape(wavenumber) != self.shape:
-            raise ValueError('Shape of wavenumber and intensity must match')
+            raise ValueError('Wavenumber has not the same shape as intensity')
         self._wavenumber = wavenumber
 
+    @property
+    def df(self):
+        """Return a pandas dataframe."""
+        return pd.DataFrame(
+            np.transpose([self.intensity, self.baseline, self.norm, self.wavenumber]),
+            columns = ('intensity', 'baseline', 'norm', 'wavenumber')
+        )
+
+    def to_json(self, *args, **kwargs):
+        """Save spectrum to json with pd.Dataframe.to_json."""
+        self.df.to_json(*args, **kwargs)
+
+
+def read_json(*args, **kwargs):
+    """Read spectrum for json file."""
+    df = pd.read_json(*args, **kwargs)
+    return Spectrum(df.intensity, df.baseline, df.norm, df.wavenumber)

@@ -9,39 +9,25 @@ norm_spectrum_index = 0
 background_name = './data/bg_quartz.dat'
 background_spectrum_index = norm_spectrum_index
 
-# Global Variables that usually are kept like this
-norm_pp_delays = slice(None)
-norm_scans = slice(None)
-norm_pixel = slice(None)
-background_pp_delays = norm_pp_delays
-background_scans = norm_scans
-background_pixel = slice(None)
-
 # Import Data
 all_data = pysfg.read.victor.folder(fpath)
+# Select Data
 norm_data = all_data[norm_name]
 background_data = all_data[background_name]
-norm = pysfg.Spectrum(
-    intensity = np.median(
-        norm_data['data'][
-            norm_pp_delays,
-            norm_scans,
-            norm_spectrum_index,
-            norm_pixel
-        ],
-        axis=(0, 1) # Median over pp_delay and scans
-    ),
-    baseline = np.median(
-        background_data['data'][
-            background_pp_delays,
-            background_scans,
-            background_spectrum_index,
-            background_pixel
-        ],
-        axis=(0, 1)
-    ),
-    wavenumber = pysfg.calibration.from_victor_header(
-        norm_data
-    ).wavenumber
+# Generate Return object
+norm = pysfg.experiments.victor.spectrum(
+    norm_data,
+    background_data,
+    data_select=pysfg.SelectorPP(spectra=norm_spectrum_index),
+    background_select=pysfg.SelectorPP(spectra=background_spectrum_index)
 )
 
+# Exercise:
+# Use the pysfg.SelectorPP object to reduce the used pixels of norm
+# into the range of 200-1400
+
+
+# Exercise:
+# Save norm as .json file and reimport the same with read_json
+# from the spectrum module
+norm.to_json('./data/norm.json')
