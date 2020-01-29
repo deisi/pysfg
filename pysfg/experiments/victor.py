@@ -1,7 +1,7 @@
 """Module to encapsulate common experiments."""
 import numpy as np
 from ..select import SelectorPP
-from ..spectrum import Spectrum, SpectrumPumpProbe
+from ..spectrum import Spectrum, PumpProbe
 from ..calibration import from_victor_header
 
 def spectrum(
@@ -92,7 +92,7 @@ def pumpProbe(
 
     # Assume norm is correct shape else it will fail
     # during assingment TODO: Add shape checking
-    if isinstance(norm, SpectrumPumpProbe):
+    if isinstance(norm, PumpProbe):
         norm = norm.basesubed
 
     if not isinstance(wavenumber, type(None)):
@@ -105,7 +105,7 @@ def pumpProbe(
         raise NotImplemented
     pp_delay = data['timedelay']
 
-    return SpectrumPumpProbe(
+    return PumpProbe(
         intensity,
         baseline,
         norm,

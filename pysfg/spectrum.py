@@ -126,13 +126,51 @@ class Spectrum(BaseSpectrum):
             columns = ('intensity', 'baseline', 'norm', 'wavenumber')
         )
 
+
 def json_to_spectrum(*args, **kwargs):
-    """Read spectrum for json file."""
+    """Read Spectrum for json file."""
     df = pd.read_json(*args, **kwargs)
     return Spectrum(df.intensity, df.baseline, df.norm, df.wavenumber)
 
+def _json_to_dict(*args, **kwargs):
+    df = pd.read_json(*args, **kwargs)
+    data = {}
+    for name, group in df.groupby("name"):
+        # Need to make a copy here to prevent error messages.
+        d = group.drop("name", axis=1)
+        if name == "intensity":
+            data["pp_delay"] = d.pop("pp_delay")
+        else:
+            d.drop("pp_delay", axis=1, inplace=True)
+        data[name] = d.to_numpy()
 
-class SpectrumPumpProbe(BaseSpectrum):
+    # PandasDataframes transform to 2d arrays
+    # but wavenumbers needs only one
+    data["wavenumber"]=data["wavenumber"][0]
+    return data
+
+def json_to_pumpprobe(*args, **kwargs):
+    """Read PumpProbe from json file.
+    See pandas.read_json for information.
+    """
+    data = _json_to_dict(*args, **kwargs)
+    return PumpProbe(
+        intensity=data["intensity"],
+        baseline=data["baseline"],
+        norm=data["norm"],
+        wavenumber=data["wavenumber"],
+        pp_delay=data["pp_delay"]
+    )
+
+def json_to_bleach(*args, **kwargs):
+    """Read PumpProbe from json file
+    See pandas.read_json for information.
+    """
+    data = _json_to_dict(*args, **kwargs)
+    return Bleach(**data)
+
+
+class PumpProbe(BaseSpectrum):
     def __init__(
             self,
             intensity,
@@ -179,7 +217,10 @@ class SpectrumPumpProbe(BaseSpectrum):
     @wavenumber.setter
     def wavenumber(self, wavenumber):
         if len(np.shape(wavenumber)) != 1 or len(wavenumber) != self.shape[1]:
-            raise ValueError('Len of wavenumber must match shape of intensity')
+            e = "Len of wavenumber {} must match shape of intensity {}".format(
+                np.shape(wavenumber), self.shape
+            )
+            raise ValueError(e)
         self._wavenumber = np.array(wavenumber)
 
     @property
@@ -194,7 +235,14 @@ class SpectrumPumpProbe(BaseSpectrum):
             df.insert(0, 'name', [key for i in range(len(self.pp_delay))])
             dfs.append(df)
         df = pd.concat(dfs)
-        return df.reset_index()
+        df.reset_index(drop=True, inplace=True)
+
+        # Prepare wavenumber
+        d = dict(zip(np.arange(len(self.wavenumber)), self.wavenumber))
+        d["name"] = "wavenumber"
+        d["pp_delay"] = np.nan
+        df = df.append(d, ignore_index=True)
+        return df
 
     def __sub__(self, other):
         """Returns a dictionary with all the important pump-probe data."""
@@ -202,7 +250,7 @@ class SpectrumPumpProbe(BaseSpectrum):
             raise NotImplemented
         if not np.all(self.pp_delay == other.pp_delay):
             raise NotImplemented
-        return SpectrumBleach(
+        return Bleach(
             intensity=self.intensity - other.intensity,
             baseline=self.baseline - other.baseline,
             norm=self.norm - other.norm,
@@ -213,7 +261,10 @@ class SpectrumPumpProbe(BaseSpectrum):
         )
 
 
-class SpectrumBleach():
+# This class is very simmilar to PumpProbe, but it doesn't impose
+# Anything on the data. Maybe its not worth it and instead one should
+# just use a dict here.
+class Bleach():
     def __init__(
             self,
             intensity=None,
@@ -232,3 +283,28 @@ class SpectrumBleach():
         self.basesubed=basesubed
         self.normalized=normalized
         # Todo implement getter and setter
+
+    @property
+    def df(self):
+        """Return a long form pandas dataframe."""
+        dfs = []
+        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized'):
+            df = pd.DataFrame(
+                getattr(self, key),
+            )
+            df.insert(0, 'pp_delay', self.pp_delay)
+            df.insert(0, 'name', [key for i in range(len(self.pp_delay))])
+            dfs.append(df)
+        df = pd.concat(dfs, sort=False) # We dont need it sorted.
+        df.reset_index(drop=True, inplace=True)
+
+        # Prepare wavenumber
+        d = dict(zip(np.arange(len(self.wavenumber)), self.wavenumber))
+        d["name"] = "wavenumber"
+        d["pp_delay"] = np.nan
+        df = df.append(d, ignore_index=True)
+        return df
+
+    def to_json(self, *args, **kwargs):
+        """Save spectrum to json with pd.Dataframe.to_json."""
+        self.df.to_json(*args, **kwargs)
