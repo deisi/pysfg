@@ -42,4 +42,4 @@ probed = pysfg.experiments.victor.pumpProbe(
     )
 )
 
-bleach = pumped - probed
+bleach = probed - pumped
