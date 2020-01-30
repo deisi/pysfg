@@ -6,11 +6,18 @@ class Victor:
     def __init__(self, central_wl, vis_wl, calib_central_wl, calib_coeff, numberOfPixel=1600):
         """Calibration of Victor data.
 
+        Takes care of pixel to nm, frequency and wavenumber calibration for the
+        Viktor lab. `Victor.wavelength` is the wavelength in nm,
+        `Victor.frequency` is the frequency in `1/cm` bevore vis correction,
+        `Vicotr.wavenumber` is the typically used SFG wavenumber corrected for
+        the visible wavelength.
+
         central_wl: float, central wavelength of the grating
         vis_wl: float, visible wavelength
         calib_central_wl: float, central wl during calibration
-        calib_coeff: calibration coefficients. Calibration coeff in decreasing order.
+        calib_coeff: tuple, calibration coefficients. Calibration coeff in decreasing order.
         numberOfPixel: horizontal number of camera pixels
+
         """
         self.central_wl = float(central_wl)
         self.vis_wl = float(vis_wl)
@@ -44,6 +51,13 @@ class Victor:
 
 
 def from_victor_header(header):
+    """Returns Victor calibration class object by reading a victor data header.
+
+    You can pass the output of `pysfg.read.victor.header` or
+    `pysfg.read.victor.data_file`. An this will return a usable calibration
+    object. If only the wavenumber is desired, than call .wavenumber on the
+    return of this function
+    """
     calib = Victor(
         header['central_wl'],
         header['vis_wl'],
@@ -53,12 +67,26 @@ def from_victor_header(header):
     return calib
 
 def from_victor_file(fpath):
-    """Read a file header from a victor file to generate calibration data"""
+    """Read a file header from a victor file to generate calibration data
+
+    Reads in a victor `.dat` file and prduces a calibration object. The
+    wavenumber can be obtained by calling .wavenumber on the output.
+
+    """
     from . import read
     header = read.victor.header(fpath)
     return from_victor_header(header)
 
 def from_victor_file_wavenumber(fpath):
-    """Read a victor file and return list of wavenumbers."""
+    """Read a victor file and return list of wavenumbers.
+
+    Convenience function of one want to read in the calibration from a victor
+    `.dat` file. Will only return the wavenumber as np.array.
+
+    The disadvantage over the `pysfg.calibration.from_victor_file` function is,
+    that afterwards. The information on vis_wl, calib_coeff, central_wl and so
+    on is not remembered.
+
+    """
     cV = from_victor_file(fpath)
     return cV.wavenumber

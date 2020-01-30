@@ -1,11 +1,12 @@
 """Module to deal with SFG Spectral Data"""
 # TODO: All classes lack a method of dealing with uncertainties
+# TODO: There are some not implemented cases left that are nice to haves.
 
 import numpy as np
 import pandas as pd
 
 class BaseSpectrum():
-    """Abstract base class for spectral data"""
+    """Abstract base class for spectral data."""
     def __init__(self, intensity, baseline=None, norm=None, wavenumber=None):
         self.intensity = intensity
         self.baseline = baseline
@@ -82,12 +83,20 @@ class Spectrum(BaseSpectrum):
     def __init__(self, intensity, baseline=None, norm=None, wavenumber=None):
         """1D SFG Spectrum
 
-        Class to encapsulate Static SFG data.
+        Class to encapsulate Static SFG data. Pass intensity, baseline, norm
+        and wavenumber data and the class allows to subtract the baseline
+        `Spectrum.basesubed` and normalize data `Spectrum.normalized`. Further
+        one can export and import the data as pandas Dataframe with
+        `Spectrum.df`, the `Spectrum.to_json` and the
+        `spectrum.json_to_spectrum` method.
+
+        All inputs are checked for correct shape.
 
         intensity: 1d array of intensity values
         baseline: 1d array of baseline values
         norm: 1d array of norm values
         wavelength: 1d array of wavelength
+
         """
         super().__init__(intensity, baseline, norm, wavenumber)
 
@@ -127,49 +136,6 @@ class Spectrum(BaseSpectrum):
         )
 
 
-def json_to_spectrum(*args, **kwargs):
-    """Read Spectrum for json file."""
-    df = pd.read_json(*args, **kwargs)
-    return Spectrum(df.intensity, df.baseline, df.norm, df.wavenumber)
-
-def _json_to_dict(*args, **kwargs):
-    df = pd.read_json(*args, **kwargs)
-    data = {}
-    for name, group in df.groupby("name"):
-        # Need to make a copy here to prevent error messages.
-        d = group.drop("name", axis=1)
-        if name == "intensity":
-            data["pp_delay"] = d.pop("pp_delay")
-        else:
-            d.drop("pp_delay", axis=1, inplace=True)
-        data[name] = d.to_numpy()
-
-    # PandasDataframes transform to 2d arrays
-    # but wavenumbers needs only one
-    data["wavenumber"]=data["wavenumber"][0]
-    return data
-
-def json_to_pumpprobe(*args, **kwargs):
-    """Read PumpProbe from json file.
-    See pandas.read_json for information.
-    """
-    data = _json_to_dict(*args, **kwargs)
-    return PumpProbe(
-        intensity=data["intensity"],
-        baseline=data["baseline"],
-        norm=data["norm"],
-        wavenumber=data["wavenumber"],
-        pp_delay=data["pp_delay"]
-    )
-
-def json_to_bleach(*args, **kwargs):
-    """Read PumpProbe from json file
-    See pandas.read_json for information.
-    """
-    data = _json_to_dict(*args, **kwargs)
-    return Bleach(**data)
-
-
 class PumpProbe(BaseSpectrum):
     def __init__(
             self,
@@ -181,7 +147,29 @@ class PumpProbe(BaseSpectrum):
     ):
         """Pump-Probe Spectrum class. Intensity is a 2D numpy array.
 
+        Class to encapsulate the handling of pump-probe SFG data.
+        Baselinesubtraction with `PumpProbe.basesubed`, normalization with
+        `PumpProbe.normalized`. Two instances of this calss can be subtracted
+        form each other to calculate the bleach:
+
+        ```
+        pumped = PumpProbe(np.random.rand(3, 10))
+        probed = PumpProbe(np.random.rand(3, 10))
+
+        bleach = pumped - probed
+        ```
+
+        Data can be saved and imported as pandas Dataframe with `PumpProbe.df`,
+        `PumpProbe.to_json` and `spectrum.json_to_pumpprobe`.
+        All inputs are shape checked against intensity data.
+
+        intensity: 2d np.array with (len(pp_delay), len(wavenumber)) shape.
+        baseline: int, float, 1d or 2d array. Baseline data. Is casted
+          into the same shape as intensity.
+        norm: same shape casting as baseline. Used for normalization
+        wavenumber: 1d array with wavenumber values.
         pp_delay: 1d numpy array of pump-probe delays.
+
         """
         super().__init__(intensity, baseline, norm, wavenumber)
         self.pp_delay = pp_delay
@@ -275,6 +263,16 @@ class Bleach():
             basesubed=None,
             normalized=None
     ):
+        """Class to encapuslate bleach data.
+
+        A class to handle the difference of two PumpProbe classes. It is
+        basically the same as PumpProbe, but doens't check for shapes. As the
+        shapes don't always need to be defined.
+
+        It allows to export the data with `Bleach.to_json` and also generates
+        DataFrames with `Bleach.df`. Data can be imported with `spectrum.json_to_bleach`
+
+        """
         self.intensity=intensity
         self.baseline=baseline
         self.norm=norm
@@ -308,3 +306,46 @@ class Bleach():
     def to_json(self, *args, **kwargs):
         """Save spectrum to json with pd.Dataframe.to_json."""
         self.df.to_json(*args, **kwargs)
+
+def json_to_spectrum(*args, **kwargs):
+    """Read Spectrum for json file."""
+    df = pd.read_json(*args, **kwargs)
+    return Spectrum(df.intensity, df.baseline, df.norm, df.wavenumber)
+
+def _json_to_dict(*args, **kwargs):
+    df = pd.read_json(*args, **kwargs)
+    data = {}
+    for name, group in df.groupby("name"):
+        # Need to make a copy here to prevent error messages.
+        d = group.drop("name", axis=1)
+        if name == "intensity":
+            data["pp_delay"] = d.pop("pp_delay")
+        else:
+            d.drop("pp_delay", axis=1, inplace=True)
+        data[name] = d.to_numpy()
+
+    # PandasDataframes transform to 2d arrays
+    # but wavenumbers needs only one
+    data["wavenumber"]=data["wavenumber"][0]
+    return data
+
+def json_to_pumpprobe(*args, **kwargs):
+    """Read PumpProbe from json file.
+    See pandas.read_json for information.
+    """
+    data = _json_to_dict(*args, **kwargs)
+    return PumpProbe(
+        intensity=data["intensity"],
+        baseline=data["baseline"],
+        norm=data["norm"],
+        wavenumber=data["wavenumber"],
+        pp_delay=data["pp_delay"]
+    )
+
+def json_to_bleach(*args, **kwargs):
+    """Read PumpProbe from json file
+    See pandas.read_json for information.
+    """
+    data = _json_to_dict(*args, **kwargs)
+    return Bleach(**data)
+

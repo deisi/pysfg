@@ -8,7 +8,18 @@ SPECS = 3 # Number of spectra recorded
 
 
 def header(fpath):
-    """Read informaion from fileheader and return as dictionary."""
+    """Read informaion from fileheader and return as dictionary.
+
+    Reads the information of the header from a vicotr `.dat` file and returns
+    the information in a strucutred way. Some of the results are also
+    translated into specific python objects if possible and returned with
+    slightly changed names.
+    """
+    # If you want to change something, instead of overwriting a bug, add a new
+    # key with the desired functionallity. This way, prior code doesn't break.
+    # One can be very waste full with this function as it is fast anyways.
+
+
     ret = {}
     with open(fpath) as f:
         for line in f:
@@ -86,8 +97,34 @@ def header(fpath):
 def data_file(fpath, kwargs_genfromtxt=None, sort_pp_times=True):
     """Read victor controller data.
 
+    Function to read of all information of a vicotr `.dat` file. It returns a
+    dictionary with combined information of the header and the data. The data
+    is added twice. Once in its raw 2D shape under the keyword `raw_data` and
+    once in its 4D shape under the keyword 'data'. Typically you want to use the
+    `data` key, as all other functions and methods in this toolkit assume 4D
+    data if dealing with the direct output of this function.
+
+    Example:
+    ```
+    data = pysfg.read.victor.data_file('path_to_file')
+    # the usable 4D form
+    data['data']
+    ```
+
+    The 4D shape can be sliced by using numpy advances slicing, or by using an
+    instance of the `pysfg.SelectorPP` class.
+
+    Example:
+    ```
+    # take the mean of the first 4 scans, of the second spectrum from pixel 400 to 1200
+    selection = pysfg.SelectorPP(scans=slice(4), spectra=2, pixel=slice(400, 1200))
+    np.mean(data['data][selection.select], axis=(0, 1))
+    ```
+
     kwargs_genfromtxt: kwargs passed to numpy genfromtxt
-    sort_pp_times: Allows sorted reading of random scrambeled pp_delay times
+    sort_pp_times: Allows sorted reading of random scrambeled pp_delay times.
+      Should be kept True.
+
     """
     if not kwargs_genfromtxt:
         kwargs_genfromtxt = {}
@@ -140,6 +177,7 @@ def list(ffiles):
 
     ffiles: list of strings pointing to victor files
     Returns a dict with file names as keys and victor data dicts as values.
+      In other words, this returns a dict of dicts.
     """
     ret = {}
     print('Reading: ')
@@ -152,7 +190,9 @@ def list(ffiles):
 def folder(fpath):
     """Read all .dat files from a folder, assuming all a victor data files
 
-    Returns a dict where file paths are the key and values are data dicts.
+    Returns a dict where file paths are the key and values are data dicts. Or
+    in other words, a dict of dicts.
+
     """
     file_paths = glob.glob(fpath + '/*.dat')
     return list(file_paths)

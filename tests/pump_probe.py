@@ -42,4 +42,5 @@ probed = pysfg.experiments.victor.pumpProbe(
     )
 )
 
+# This generates a `pysfg.Bleach` object.
 bleach = probed - pumped
