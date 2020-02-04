@@ -144,6 +144,9 @@ class PumpProbe(BaseSpectrum):
             norm=None,
             wavenumber=None,
             pp_delay=None,
+            pump_freq=None,
+            pump_width=None,
+            cc_width=None,
     ):
         """Pump-Probe Spectrum class. Intensity is a 2D numpy array.
 
@@ -173,6 +176,9 @@ class PumpProbe(BaseSpectrum):
         """
         super().__init__(intensity, baseline, norm, wavenumber)
         self.pp_delay = pp_delay
+        self.pump_freq = pump_freq
+        self.pump_width = pump_width
+        self.cc_width = cc_width
 
     @property
     def pp_delay(self):
@@ -214,6 +220,7 @@ class PumpProbe(BaseSpectrum):
     @property
     def df(self):
         """Return a long form pandas dataframe."""
+        # TODO andd pump_width, pump_pos and cc_width.
         dfs = []
         for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized'):
             df = pd.DataFrame(
@@ -261,7 +268,10 @@ class Bleach():
             wavenumber=None,
             pp_delay=None,
             basesubed=None,
-            normalized=None
+            normalized=None,
+            pump_freq=None,
+            pump_width=None,
+            cc_width=None,
     ):
         """Class to encapuslate bleach data.
 
@@ -280,11 +290,15 @@ class Bleach():
         self.pp_delay=pp_delay
         self.basesubed=basesubed
         self.normalized=normalized
+        self.pump_freq = pump_freq
+        self.pump_width = pump_width
+        self.cc_width = cc_width
         # Todo implement getter and setter
 
     @property
     def df(self):
         """Return a long form pandas dataframe."""
+        # TODO andd pump_width, pump_pos and cc_width.
         dfs = []
         for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized'):
             df = pd.DataFrame(
@@ -306,6 +320,48 @@ class Bleach():
     def to_json(self, *args, **kwargs):
         """Save spectrum to json with pd.Dataframe.to_json."""
         self.df.to_json(*args, **kwargs)
+
+    def get_trace(
+            self, pixels=slice(None), delays=slice(None),
+    ):
+        """Generate a Trace object form this bleach object."""
+        #TODO add pump_width, pump_freq and cc_width
+        trace = np.mean(self.normalized[delays, pixels], axis=1)
+        pp_delay = self.pp_delay[delays]
+        return Trace(pp_delay, trace, pixels=pixels, delays=delays)
+
+class Trace():
+    def __init__(
+            self, pp_delay, bleach, pixels=slice(None), delays=slice(None),
+            pump_freq=None, pump_width=None, cc_width=None,
+    ):
+        """ Class to encapuslate trace data.
+
+        pp_delay: 1D array of pump_probe delays
+        bleach: 1D array of bleach values. This is NOT a bleach object
+        pixels: slice of pixels used for this trace.
+        delays: slice of delays selected during creation
+        pump_freq: central pump frequency as int
+        pump_width: spectral width of the pump freq.
+        cc_wisth: temporal width of the cross correlation.
+        """
+        self.pp_delay = pp_delay
+        self.bleach = bleach
+        self.pixels = pixels
+        self.delays = delays
+        self.pump_freq = pump_freq
+        self.pump_width = pump_width
+        self.cc_width = cc_width
+
+    def df(self):
+        # Implement a method to generate a long from dataframe from this data.
+        raise NotImplemented
+
+    def to_json(self, *args, **kwargs):
+        """Save spectrum to json with pd.Dataframe.to_json."""
+        self.df.to_json(*args, **kwargs)
+
+
 
 def json_to_spectrum(*args, **kwargs):
     """Read Spectrum for json file."""
@@ -349,3 +405,6 @@ def json_to_bleach(*args, **kwargs):
     data = _json_to_dict(*args, **kwargs)
     return Bleach(**data)
 
+def json_to_trace(*args, **kwargs):
+    # implement a method to read df to trace
+    raise NotImplementedError

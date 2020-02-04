@@ -57,3 +57,5 @@ fname = './data/sc_quartz.dat'
 wavenumber = pysfg.calibration.from_victor_file_wavenumber(fname)
 ```
 
+Take a look at the content of the `tests/` folder. It contains usage examples 
+and should aid in understanding the package.

@@ -6,4 +6,5 @@ iminuit
 datetime
 os
 glob
+scipy
 
