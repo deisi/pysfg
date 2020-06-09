@@ -2,7 +2,7 @@
 
 import numpy as np
 
-class Victor:
+class Calibration:
     def __init__(self, central_wl, vis_wl, calib_central_wl, calib_coeff, numberOfPixel=1600):
         """Calibration of Victor data.
 
@@ -58,7 +58,7 @@ def from_victor_header(header):
     object. If only the wavenumber is desired, than call .wavenumber on the
     return of this function
     """
-    calib = Victor(
+    calib = Calibration(
         header['central_wl'],
         header['vis_wl'],
         header['calib_central_wl'],

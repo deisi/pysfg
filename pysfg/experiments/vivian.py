@@ -1,15 +1,17 @@
-"""Module to encapsulate common experiments.
+"""Module to encapsulate an experiment in vivian.
 
-I'm not sure if this is usefull, but I know, that in the end one does more or
-less always the same. This module should hold methods, that help redoing these
-things easier and faster.
+This is very similar to victor module, but the way the wavenumber is calculated
+is slightly different.
 
 """
 import numpy as np
 from scipy.stats import sem
 from ..select import SelectorPP
 from ..spectrum import Spectrum, PumpProbe
-from ..calibration import from_victor_header
+from ..calibration import Calibration
+
+# The parameters were determined by Simon
+calibration = lambda central_wl: Calibration(central_wl, 799.7, 680, [0.080881, 615.18])
 
 def spectrum(
         data,
@@ -60,19 +62,23 @@ def spectrum(
         axis=(0, 1) # Median over pp_delay and scans
     )
 
-    if instance(wavenumber, type(None)):
-        wavenumber = from_victor_header(
-            data
-           ).wavenumber[data_select.pixel]
+    intensityE = sem(
+        np.median(data['data'][data_select.select], axis=0),
+        axis=(0) # Median over pp_delay sem over scans.
+    )
+
+    if isinstance(wavenumber, type(None)):
+        wavenumber = calibration(data['central_wl']).wavenumber[data_select.pixel]
 
     if len(wavenumber) != np.shape(intensity)[-1]:
         raise ValueError("Shape of wavenumber doesn't match shape of intensity")
 
     return Spectrum(
-        intensity= intensity,
+        intensity=intensity,
         baseline=baseline,
         norm=norm,
         wavenumber=wavenumber,
+        intensityE=intensityE,
         pixel=pixel,
     )
 
@@ -154,9 +160,7 @@ def pumpProbe(
         norm = norm.basesubed
 
     if isinstance(wavenumber, type(None)):
-        wavenumber = from_victor_header(
-            data
-           ).wavenumber[data_select.pixel]
+        wavenumber = calibration(data['central_wl']).wavenumber[data_select.pixel]
     if len(wavenumber) != np.shape(intensity)[-1]:
         raise ValueError("Shape of wavenumber doesn't match shape of intensity")
 

@@ -1,22 +1,47 @@
 """Module to deal with SFG Spectral Data"""
 # TODO: All classes lack a method of dealing with uncertainties
+#       - I added handling of intensity errors. This is the first order
+#          effect and thus the most important one.
 # TODO: There are some not implemented cases left that are nice to haves.
 
+
+from scipy.ndimage import gaussian_filter1d
 import numpy as np
 import pandas as pd
+import logging
 
 class BaseSpectrum():
     """Abstract base class for spectral data."""
-    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None):
+    def __init__(
+            self, intensity, baseline=None, norm=None, wavenumber=None, intensityE=None, pixel=None
+    ):
         self.intensity = intensity
         self.baseline = baseline
         self.norm = norm
         self.wavenumber = wavenumber
+        self.intensityE = intensityE
+        self.pixel = pixel
 
     @property
     def intensity(self):
         """Intensity values of the spectrum. Must be a 1D array"""
         return self._intensity
+
+    @property
+    def intensityE(self):
+        """Uncertainty of the intensity values."""
+        return self._intensityE
+
+    @intensityE.setter
+    def intensityE(self, intensityE):
+        if isinstance(intensityE, type(None)):
+            logging.warning("Warning. Using default error estimation of 10%")
+            intensityE = self.intensity*0.1
+        elif isinstance(intensityE, float) or isinstance(intensityE, int):
+            intensityE = self.intensity*intensityE
+        if np.shape(intensityE) != self.shape:
+            raise ValueError('Shape of intensityE and intensity must match')
+        self._intensityE = np.array(intensityE)
 
     @property
     def baseline(self):
@@ -60,14 +85,47 @@ class BaseSpectrum():
         return self.intensity - self.baseline
 
     @property
+    def basesubedE(self):
+        raise NotImplemented
+
+    @property
     def normalized(self):
         """Normalized intensity"""
-        return self.basesubed / self.norm
+        return self.basesubed/self.norm
+
+    @property
+    def normalizedE(self):
+        """Uncertainty of the normalized intensity.
+
+        Implementation is not complete. Baseline and normalization uncertainty
+        are currently neglected.
+        """
+        return self.intensityE/self.norm
 
     @property
     def wavenumber(self):
         """Wavenumber values of the spectrum."""
         return self._wavenumber
+
+    @property
+    def pixel(self):
+        """The pixel number on the camera. This only equals the index position if the
+        spectra aren't truncated initially, what they typically should be, as
+        the setups have a finite bandwidth.
+        """
+        return self._pixel
+
+    @pixel.setter
+    def pixel(self, pixel):
+        if isinstance(pixel, type(None)):
+            pixel = np.arange(self.shape[-1])
+        elif isinstance(pixel, slice):
+            pixel = np.arange(pixel.start, pixel.stop)
+        if len(pixel) != self.shape[-1]:
+            raise ValueError("Pixel shape doesn't match data shape: {} vs {}".format(
+                len(pixel), self.shape)
+            )
+        self._pixel = pixel
 
     @property
     def df(self):
@@ -79,8 +137,15 @@ class BaseSpectrum():
         self.df.to_json(*args, **kwargs)
 
 
+    def gaussian_filter1d(self, prop, *args, **kwargs):
+        """Return gaussian filtered version of prop."""
+        data = getattr(self, prop)
+        return gaussian_filter1d(data *args, **kwargs)
+
+
+
 class Spectrum(BaseSpectrum):
-    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None):
+    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None, intensityE=None, pixel=None):
         """1D SFG Spectrum
 
         Class to encapsulate Static SFG data. Pass intensity, baseline, norm
@@ -98,8 +163,9 @@ class Spectrum(BaseSpectrum):
         wavelength: 1d array of wavelength
 
         """
-        super().__init__(intensity, baseline, norm, wavenumber)
+        super().__init__(intensity, baseline, norm, wavenumber, intensityE, pixel)
 
+    # intensity property cant be inherited from BaseSpectrum for some reason I forgot
     @property
     def intensity(self):
         """Intensity values of the spectrum. Must be a 1D array"""
@@ -130,9 +196,10 @@ class Spectrum(BaseSpectrum):
     @property
     def df(self):
         """Return a pandas dataframe."""
+        columns = ('intensity', 'baseline', 'norm', 'wavenumber', 'pixel', 'intensityE')
         return pd.DataFrame(
-            np.transpose([self.intensity, self.baseline, self.norm, self.wavenumber]),
-            columns = ('intensity', 'baseline', 'norm', 'wavenumber')
+            np.transpose([getattr(self, name) for name in columns]),
+            columns = columns
         )
 
 
@@ -147,6 +214,8 @@ class PumpProbe(BaseSpectrum):
             pump_freq=None,
             pump_width=None,
             cc_width=None,
+            intensityE=None,
+            pixel=None,
     ):
         """Pump-Probe Spectrum class. Intensity is a 2D numpy array.
 
@@ -174,7 +243,7 @@ class PumpProbe(BaseSpectrum):
         pp_delay: 1d numpy array of pump-probe delays.
 
         """
-        super().__init__(intensity, baseline, norm, wavenumber)
+        super().__init__(intensity, baseline, norm, wavenumber, intensityE, pixel)
         self.pp_delay = pp_delay
         self.pump_freq = pump_freq
         self.pump_width = pump_width
@@ -222,7 +291,7 @@ class PumpProbe(BaseSpectrum):
         """Return a long form pandas dataframe."""
         # TODO andd pump_width, pump_pos and cc_width.
         dfs = []
-        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized'):
+        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized', 'pixel'):
             df = pd.DataFrame(
                 getattr(self, key),
             )
@@ -245,14 +314,41 @@ class PumpProbe(BaseSpectrum):
             raise NotImplemented
         if not np.all(self.pp_delay == other.pp_delay):
             raise NotImplemented
+
+
+        # This corrects for static differences in pumped and probed
         return Bleach(
             intensity=self.intensity - other.intensity,
-            baseline=self.baseline - other.baseline,
-            norm=self.norm - other.norm,
+            baseline=np.mean([self.baseline, other.baseline], 0),
+            norm=np.mean([self.norm, other.norm], 0),
             wavenumber=self.wavenumber,
             pp_delay=self.pp_delay,
             basesubed=self.basesubed - other.basesubed,
             normalized=self.normalized - other.normalized,
+            intensityE=np.sqrt(self.intensityE**2 + other.intensityE**2),
+            pixel=self.pixel,
+            normalizedE=np.sqrt(self.normalizedE**2+other.normalizedE**2),
+        )
+
+    def __truediv__(self, other):
+        """Returns a dictionary with all the important pump-probe data."""
+        if not np.all(self.wavenumber == other.wavenumber):
+            raise NotImplemented
+        if not np.all(self.pp_delay == other.pp_delay):
+            raise NotImplemented
+        return Bleach(
+            intensity=self.intensity / other.intensity,
+            baseline=self.baseline / other.baseline,
+            norm=np.mean([self.norm, other.norm], 0),
+            wavenumber=self.wavenumber,
+            pp_delay=self.pp_delay,
+            basesubed=self.basesubed / other.basesubed,
+            normalized=self.normalized / other.normalized,
+            intensityE=np.sqrt((self.intensityE/other.intensity)**2 +
+                               (self.intensity*other.intensityE/other.intensity**2)**2),
+            pixel=self.pixel,
+            normalizedE=np.sqrt((self.normalizedE/other.normalized)**2 +
+                               (self.normalized*other.normalizedE/other.normalized**2)**2),
         )
 
 
@@ -272,6 +368,9 @@ class Bleach():
             pump_freq=None,
             pump_width=None,
             cc_width=None,
+            intensityE=None,
+            pixel=None,
+            normalizedE=None,
     ):
         """Class to encapuslate bleach data.
 
@@ -293,6 +392,9 @@ class Bleach():
         self.pump_freq = pump_freq
         self.pump_width = pump_width
         self.cc_width = cc_width
+        self.intensityE = intensityE
+        self.pixel = pixel
+        self.normalizedE = normalizedE
         # Todo implement getter and setter
 
     @property
@@ -300,7 +402,7 @@ class Bleach():
         """Return a long form pandas dataframe."""
         # TODO andd pump_width, pump_pos and cc_width.
         dfs = []
-        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized'):
+        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized', 'intensityE', 'normalizedE'):
             df = pd.DataFrame(
                 getattr(self, key),
             )
@@ -315,6 +417,11 @@ class Bleach():
         d["name"] = "wavenumber"
         d["pp_delay"] = np.nan
         df = df.append(d, ignore_index=True)
+
+        d = dict(zip(np.arange(len(self.pixel)), self.pixel))
+        d["name"] = "pixel"
+        d["pp_delay"] = np.nan
+        df = df.append(d, ignore_index=True)
         return df
 
     def to_json(self, *args, **kwargs):
@@ -322,18 +429,37 @@ class Bleach():
         self.df.to_json(*args, **kwargs)
 
     def get_trace(
-            self, pixels=slice(None), delays=slice(None),
+            self, pixel=slice(None), delays=slice(None),
     ):
-        """Generate a Trace object form this bleach object."""
-        #TODO add pump_width, pump_freq and cc_width
-        trace = np.mean(self.normalized[delays, pixels], axis=1)
-        pp_delay = self.pp_delay[delays]
-        return Trace(pp_delay, trace, pixels=pixels, delays=delays)
+        """Generate a Trace object form this bleach object.
 
+        pixels refers to the `bleach.pixel` array. Steps are ignored.
+        """
+        #TODO add pump_width, pump_freq and cc_width
+        if isinstance(pixel, slice):
+            # The zero is needed because self.pixels is per definition a 1D array
+            pixel_index = np.where((self.pixel>pixel.start) & (self.pixel<pixel.stop))[0]
+            pixel = np.arange(pixel.start, pixel.stop)
+        else:
+            raise NotImplementedError
+
+        trace = np.mean(self.normalized[delays, pixel_index], axis=1)
+        pp_delay = self.pp_delay[delays]
+        # Error propagation for the uncertainty of the mean
+        de = self.normalizedE[delays, pixel_index]
+        traceE = np.sqrt(np.sum(de**2, axis=1))/de.shape[1]
+        return Trace(pp_delay, bleach=trace, pixel=pixel, delays=delays, bleachE=traceE)
+
+    def gaussian_filter1d(self, prop, *args, **kwargs):
+        """Return gaussian filtered version of prop."""
+        data = getattr(self, prop)
+        return gaussian_filter1d(data *args, **kwargs)
+
+# TODO: Add type checkers
 class Trace():
     def __init__(
-            self, pp_delay, bleach, pixels=slice(None), delays=slice(None),
-            pump_freq=None, pump_width=None, cc_width=None,
+            self, pp_delay, bleach, pixel=None, delays=None,
+            pump_freq=None, pump_width=None, cc_width=None, bleachE=None,
     ):
         """ Class to encapuslate trace data.
 
@@ -344,24 +470,38 @@ class Trace():
         pump_freq: central pump frequency as int
         pump_width: spectral width of the pump freq.
         cc_wisth: temporal width of the cross correlation.
+        bleachE: Uncertainty of the bleach
         """
-        self.pp_delay = pp_delay
-        self.bleach = bleach
-        self.pixels = pixels
+        self.pp_delay = np.array(pp_delay)
+        self.bleach = np.array(bleach)
+        self.pixel = pixel
         self.delays = delays
         self.pump_freq = pump_freq
         self.pump_width = pump_width
         self.cc_width = cc_width
+        self.bleachE = bleachE
 
+    @property
     def df(self):
+        """Return a long form pandas dataframe."""
         # Implement a method to generate a long from dataframe from this data.
-        raise NotImplemented
+        keys = ('pp_delay', 'bleach', 'bleachE')
+        df = pd.DataFrame(
+            {key: getattr(self, key) for key in keys},
+               ).melt(id_vars='pp_delay')
+        # This is a hack as I can't put lists into elements of dataframes.
+        df['pixel_start']=self.pixel.min()
+        df['pixel_stop']=self.pixel.max()
+        df['cc_width']=self.cc_width
+        df['pump_freq']=self.pump_freq
+        df['pump_width']=self.pump_width
+        return df
 
     def to_json(self, *args, **kwargs):
         """Save spectrum to json with pd.Dataframe.to_json."""
         self.df.to_json(*args, **kwargs)
 
-
+    # TODO: Must implement setter and getter for pixel and so on. Else with will become a mess
 
 def json_to_spectrum(*args, **kwargs):
     """Read Spectrum for json file."""
@@ -383,6 +523,7 @@ def _json_to_dict(*args, **kwargs):
     # PandasDataframes transform to 2d arrays
     # but wavenumbers needs only one
     data["wavenumber"]=data["wavenumber"][0]
+    data["pixel"]=data["pixel"][0]
     return data
 
 def json_to_pumpprobe(*args, **kwargs):
@@ -407,4 +548,25 @@ def json_to_bleach(*args, **kwargs):
 
 def json_to_trace(*args, **kwargs):
     # implement a method to read df to trace
-    raise NotImplementedError
+    df = pd.read_json(*args, **kwargs)
+    data = {}
+    for name, group in df.groupby("variable"):
+        # Need to make a copy here to prevent error messages.
+        d = group.drop("variable", axis=1)
+        data[name] = d['value'].to_numpy()
+    #TODO: This is all super bad spagetty hacking but I don't have the time to
+    # think about it now. However the plan would be to have a data structure in
+    # the data frame that inherently matches to the traces data structure and
+    # all that manual parsing would not be needed.
+
+    # The metadata is just melted into the dataframe. Thus
+    # it makes no differenc witch value exactly we extract.
+    # only one is allowed anyway
+    for key in ('cc_width', 'pump_freq', 'pump_width'):
+        v = group[key].iloc[0]
+        if pd.isna(v):
+            data[key] = None
+    data['pixel'] = np.arange(group['pixel_start'].iloc[0], group['pixel_stop'].iloc[0])
+    data['pp_delay'] = group['pp_delay']
+
+    return Trace(**data)
