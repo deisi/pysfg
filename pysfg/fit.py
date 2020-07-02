@@ -13,18 +13,21 @@ from iminuit import Minuit, describe
 from iminuit.util import make_func_code
 
 
-
 class LeastSquares:
-    def __init__(self, model, x, y):
+    def __init__(self, model, x, y, yerr=None):
         self.model = model  # model predicts y for given x
         self.x = np.array(x)
         self.y = np.array(y)
+        if isinstance(yerr, type(None)):
+            yerr = np.ones_like(self.y)
+        self.yerr = np.array(yerr)
         self.func_code = make_func_code(describe(self.model)[1:])
 
-    def __call__(self, *par):  # par are a variable number of model parameters
+    def __call__(self, *par):  # par is a variable number of model parameters
         ym = self.model(self.x, *par)
-        chi2 = sum((self.y - ym)**2)
+        chi2 = sum(((self.y - ym)/self.yerr)**2)
         return chi2
+
 
 class FitBase():
     def __init__(self, x, y, yerr=None, **kwargs):
@@ -49,6 +52,13 @@ class FitBase():
     def fit(self, x):
         """Fit function at value x."""
         return self.model(x, *self.minuit.args)
+
+    def to_json(self):
+        """Export json serialized version"""
+        raise NotImplemented
+
+    def from_json(self):
+        """Import from json serialized version"""
 
 class Gaussian(FitBase):
     def __init__(self, x, y, yerr=None, **kwargs):

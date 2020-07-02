@@ -2,6 +2,7 @@
 import datetime
 import numpy as np
 import glob
+import logging
 
 PIXEL = 1600 # Number of pixel on camera
 SPECS = 3 # Number of spectra recorded
@@ -169,30 +170,38 @@ def data_file(fpath, kwargs_genfromtxt=None, sort_pp_times=True):
         data = data[sorting_ideces]
 
     ret['data'] = data
+    ret['number_of_scans'] = data.shape[0] * data.shape[1]
     return ret
 
 
-def list(ffiles):
+def list(ffiles, squeeze=False):
     """Read a list of files assuming all are victor data files.
 
     ffiles: list of strings pointing to victor files
     Returns a dict with file names as keys and victor data dicts as values.
       In other words, this returns a dict of dicts.
+
+    Squeeze: Squeeze out folder path and keep only filename as identifier.
     """
     ret = {}
-    print('Reading: ')
     for ffile in ffiles:
-        print(ffile)
-        ret[ffile] = data_file(ffile)
+        logging.info('Reading: {}'.format(ffile))
+        name = ffile
+        if squeeze:
+            name = os.path.split(ffile)[-1]
+            logging.info('As: {}'.format(name))
+        ret[name] = data_file(ffile)
     return ret
 
 
-def folder(fpath):
+def folder(fpath, squeeze=False):
     """Read all .dat files from a folder, assuming all a victor data files
 
     Returns a dict where file paths are the key and values are data dicts. Or
     in other words, a dict of dicts.
 
+    Squeeze: Squeeze out folder path and keep only filename as identifier.
+
     """
     file_paths = glob.glob(fpath + '/*.dat')
-    return list(file_paths)
+    return list(file_paths, squeeze)

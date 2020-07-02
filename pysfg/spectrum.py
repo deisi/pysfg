@@ -429,26 +429,33 @@ class Bleach():
         self.df.to_json(*args, **kwargs)
 
     def get_trace(
-            self, pixel=slice(None), delays=slice(None),
+            self, pixel=None, delays=slice(None),
     ):
         """Generate a Trace object form this bleach object.
 
         pixels refers to the `bleach.pixel` array. Steps are ignored.
         """
-        #TODO add pump_width, pump_freq and cc_width
-        if isinstance(pixel, slice):
-            # The zero is needed because self.pixels is per definition a 1D array
-            pixel_index = np.where((self.pixel>pixel.start) & (self.pixel<pixel.stop))[0]
-            pixel = np.arange(pixel.start, pixel.stop)
-        else:
-            raise NotImplementedError
+        #TODO The pixel and wavenumber thing is super ugly hack
+        if isinstance(pixel, type(None)):
+            pixel = slice(None)
+        elif not isinstance(pixel, slice):
+            pixel = slice(*pixel)
 
-        trace = np.mean(self.normalized[delays, pixel_index], axis=1)
+        index = np.where((self.pixel>pixel.start) & (self.pixel<pixel.stop))[0]
+        pixel = (pixel.start, pixel.stop)
+
+        #TODO add pump_width, pump_freq and cc_width
+        # The zero is needed because self.pixels is per definition a 1D array
+
+        trace = np.mean(self.normalized[delays, index], axis=1)
         pp_delay = self.pp_delay[delays]
         # Error propagation for the uncertainty of the mean
-        de = self.normalizedE[delays, pixel_index]
+        de = self.normalizedE[delays, index]
         traceE = np.sqrt(np.sum(de**2, axis=1))/de.shape[1]
-        return Trace(pp_delay, bleach=trace, pixel=pixel, delays=delays, bleachE=traceE)
+        return Trace(
+            pp_delay, bleach=trace, pixel=pixel,
+            delays=delays, bleachE=traceE,
+        )
 
     def gaussian_filter1d(self, prop, *args, **kwargs):
         """Return gaussian filtered version of prop."""
@@ -460,6 +467,7 @@ class Trace():
     def __init__(
             self, pp_delay, bleach, pixel=None, delays=None,
             pump_freq=None, pump_width=None, cc_width=None, bleachE=None,
+            wavenumber=None, wavelength=None,
     ):
         """ Class to encapuslate trace data.
 
@@ -475,11 +483,28 @@ class Trace():
         self.pp_delay = np.array(pp_delay)
         self.bleach = np.array(bleach)
         self.pixel = pixel
+        self.wavenumber = wavenumber
+        self.wavelength = wavelength
         self.delays = delays
         self.pump_freq = pump_freq
         self.pump_width = pump_width
         self.cc_width = cc_width
         self.bleachE = bleachE
+
+    @property
+    def pixel(self):
+        return self._pixel
+
+    @pixel.setter
+    def pixel(self, value):
+        if isinstance(value, type(None)):
+            self._pixel = (None, None)
+        elif isinstance(value, slice):
+            self._pixel = (value.start, value.stop)
+        elif len(value) == 2:
+            self._pixel = tuple(value)
+        else:
+            self._pixel = (np.min(value), np.max(value))
 
     @property
     def df(self):
@@ -490,8 +515,10 @@ class Trace():
             {key: getattr(self, key) for key in keys},
                ).melt(id_vars='pp_delay')
         # This is a hack as I can't put lists into elements of dataframes.
-        df['pixel_start']=self.pixel.min()
-        df['pixel_stop']=self.pixel.max()
+        df['pixel_start']=np.min(self.pixel)
+        df['pixel_stop']=np.max(self.pixel)
+        df['wavenumber_start']=np.min(self.wavenumber)
+        df['wavenumber_stop']=np.max(self.wavenumber)
         df['cc_width']=self.cc_width
         df['pump_freq']=self.pump_freq
         df['pump_width']=self.pump_width
@@ -566,7 +593,8 @@ def json_to_trace(*args, **kwargs):
         v = group[key].iloc[0]
         if pd.isna(v):
             data[key] = None
-    data['pixel'] = np.arange(group['pixel_start'].iloc[0], group['pixel_stop'].iloc[0])
+    data['pixel'] = (group['pixel_start'].iloc[0], group['pixel_stop'].iloc[0])
+    data['wavenumber'] = (group['wavenumber_start'].iloc[0], group['wavenumber_stop'].iloc[0])
     data['pp_delay'] = group['pp_delay']
 
     return Trace(**data)
