@@ -90,3 +90,17 @@ def from_victor_file_wavenumber(fpath):
     """
     cV = from_victor_file(fpath)
     return cV.wavenumber
+
+
+# These calibration coefficients were obtained by Simon, but they
+# are not saved within the Program, thus I append them here.
+def from_vivian_file(fpath, calib_central_wl=680, calib_coeff=[0.080881, 615.18]):
+    from . import read
+    header = read.victor.header(fpath)
+    calib = Calibration(
+        header['central_wl'],
+        header['vis_wl'],
+        calib_central_wl,
+        calib_coeff,
+    )
+    return calib

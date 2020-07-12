@@ -120,7 +120,12 @@ class BaseSpectrum():
         if isinstance(pixel, type(None)):
             pixel = np.arange(self.shape[-1])
         elif isinstance(pixel, slice):
-            pixel = np.arange(pixel.start, pixel.stop)
+            if isinstance(pixel.start, type(None)) and isinstance(pixel.stop, type(None)):
+                pixel = np.arange(0, len(self.intensity))
+            elif isinstance(pixel.start, type(None)) or isinstance(pixel.stop, type(None)):
+                raise ValueError('Strange pixel slice: ' + pixel)
+            else:
+                pixel = np.arange(pixel.start, pixel.stop)
         if len(pixel) != self.shape[-1]:
             raise ValueError("Pixel shape doesn't match data shape: {} vs {}".format(
                 len(pixel), self.shape)
@@ -258,7 +263,7 @@ class PumpProbe(BaseSpectrum):
         if isinstance(pp_delay, type(None)):
             pp_delay = np.arange(np.shape[0])
         elif not len(pp_delay) == self.shape[0] or len(np.shape(pp_delay)) != 1:
-            raise ValueError('Len of pp_delays must match shape of intensity.')
+            raise ValueError('Len of pp_delay must match shape of intensity.')
         self._pp_delay = pp_delay
 
     @property
@@ -291,19 +296,26 @@ class PumpProbe(BaseSpectrum):
         """Return a long form pandas dataframe."""
         # TODO andd pump_width, pump_pos and cc_width.
         dfs = []
-        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized', 'pixel'):
+        for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized', 'intensityE', 'normalizedE'):
             df = pd.DataFrame(
                 getattr(self, key),
             )
             df.insert(0, 'pp_delay', self.pp_delay)
             df.insert(0, 'name', [key for i in range(len(self.pp_delay))])
+
             dfs.append(df)
         df = pd.concat(dfs)
         df.reset_index(drop=True, inplace=True)
 
-        # Prepare wavenumber
+        # Add Wavenumbers
         d = dict(zip(np.arange(len(self.wavenumber)), self.wavenumber))
         d["name"] = "wavenumber"
+        d["pp_delay"] = np.nan
+        df = df.append(d, ignore_index=True)
+
+        # Add Pixels numbers
+        d = dict(zip(np.arange(len(self.pixel)), self.pixel))
+        d["name"] = "pixel"
         d["pp_delay"] = np.nan
         df = df.append(d, ignore_index=True)
         return df
@@ -429,17 +441,16 @@ class Bleach():
         self.df.to_json(*args, **kwargs)
 
     def get_trace(
-            self, pixel=None, delays=slice(None),
+            self, pixel=slice(None), delay=slice(None),
     ):
         """Generate a Trace object form this bleach object.
 
-        pixels refers to the `bleach.pixel` array. Steps are ignored.
+        pixel refers to the `bleach.pixel` array. Steps are ignored.
         """
-        #TODO The pixel and wavenumber thing is super ugly hack
-        if isinstance(pixel, type(None)):
-            pixel = slice(None)
-        elif not isinstance(pixel, slice):
-            pixel = slice(*pixel)
+        if not isinstance(pixel, slice):
+            raise NotImplementedError('Pixel must be slice object')
+        if not isinstance(delay, slice):
+            raise NotImplementedError('Delay must be slice object')
 
         index = np.where((self.pixel>pixel.start) & (self.pixel<pixel.stop))[0]
         pixel = (pixel.start, pixel.stop)
@@ -447,14 +458,14 @@ class Bleach():
         #TODO add pump_width, pump_freq and cc_width
         # The zero is needed because self.pixels is per definition a 1D array
 
-        trace = np.mean(self.normalized[delays, index], axis=1)
-        pp_delay = self.pp_delay[delays]
+        trace = np.mean(self.normalized[delay, index], axis=1)
+        pp_delay = self.pp_delay[delay]
         # Error propagation for the uncertainty of the mean
-        de = self.normalizedE[delays, index]
+        de = self.normalizedE[delay, index]
         traceE = np.sqrt(np.sum(de**2, axis=1))/de.shape[1]
         return Trace(
             pp_delay, bleach=trace, pixel=pixel,
-            delays=delays, bleachE=traceE,
+            delay=delay, bleachE=traceE,
         )
 
     def gaussian_filter1d(self, prop, *args, **kwargs):
@@ -465,7 +476,7 @@ class Bleach():
 # TODO: Add type checkers
 class Trace():
     def __init__(
-            self, pp_delay, bleach, pixel=None, delays=None,
+            self, pp_delay, bleach, pixel=None, delay=None,
             pump_freq=None, pump_width=None, cc_width=None, bleachE=None,
             wavenumber=None, wavelength=None,
     ):
@@ -473,8 +484,8 @@ class Trace():
 
         pp_delay: 1D array of pump_probe delays
         bleach: 1D array of bleach values. This is NOT a bleach object
-        pixels: slice of pixels used for this trace.
-        delays: slice of delays selected during creation
+        pixel: slice of pixels used for this trace.
+        delay: slice of delays selected during creation
         pump_freq: central pump frequency as int
         pump_width: spectral width of the pump freq.
         cc_wisth: temporal width of the cross correlation.
@@ -485,7 +496,7 @@ class Trace():
         self.pixel = pixel
         self.wavenumber = wavenumber
         self.wavelength = wavelength
-        self.delays = delays
+        self.delay = delay
         self.pump_freq = pump_freq
         self.pump_width = pump_width
         self.cc_width = cc_width
@@ -560,9 +571,11 @@ def json_to_pumpprobe(*args, **kwargs):
     data = _json_to_dict(*args, **kwargs)
     return PumpProbe(
         intensity=data["intensity"],
+        intensityE=data['intensityE'],
         baseline=data["baseline"],
         norm=data["norm"],
         wavenumber=data["wavenumber"],
+        pixel=data['pixel'],
         pp_delay=data["pp_delay"]
     )
 

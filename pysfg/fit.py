@@ -14,12 +14,10 @@ from iminuit.util import make_func_code
 
 
 class LeastSquares:
-    def __init__(self, model, x, y, yerr=None):
+    def __init__(self, model, x, y, yerr):
         self.model = model  # model predicts y for given x
         self.x = np.array(x)
         self.y = np.array(y)
-        if isinstance(yerr, type(None)):
-            yerr = np.ones_like(self.y)
         self.yerr = np.array(yerr)
         self.func_code = make_func_code(describe(self.model)[1:])
 
@@ -36,12 +34,11 @@ class FitBase():
         self.x = np.array(x)
         self.y = np.array(y)
         if isinstance(yerr, type(None)):
-            self.yerr = np.ones_like(self.x)
-        else:
-            self.yerr = np.array(yerr)
+            yerr = np.ones_like(self.x)
+        self.yerr = np.array(yerr)
 
         # TODO errorbars
-        self.lsq = LeastSquares(self.model, self.x, self.y)
+        self.lsq = LeastSquares(self.model, self.x, self.y, self.yerr)
         # get the args from line and strip 'x'
         self.minuit = Minuit(self.lsq, **kwargs)
 
@@ -65,7 +62,7 @@ class Gaussian(FitBase):
         """Gaussian data model"""
         super().__init__(x, y, yerr, **kwargs)
 
-    def model(x, A, mu, sigma, c):
+    def model(self, x, A, mu, sigma, c):
         if sigma < 0:
             return 0
         return A * norm.pdf(x, mu, sigma) + c

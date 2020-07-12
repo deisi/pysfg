@@ -24,7 +24,7 @@ def header(fpath):
     ret = {}
     with open(fpath) as f:
         for line in f:
-            if line[0] is not "#":
+            if line[0] != "#":
                 break
             # Strip comment marker
             line = line[2:]

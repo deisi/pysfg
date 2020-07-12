@@ -3,12 +3,15 @@ Second attempt in getting a useful python library for our SFG setups.
 
 ## Install
 - Install Anaconda for python3 64Bit
+- Setup automatic kernel generation
+  `conda install nb_conda_kernels`
 - Setup a conda environment with:
   `conda env create -f environment.yml`
-- Activate the environment with:
-  `conda activate sfg`
-- Add a kernel to the default jupyterlab environment
-  `ipython kernel install --user --name=sfg`
+- If you havent set up the automatic kernel generation above you now need to do it manually with:
+  - Activate the environment with:
+    `conda activate sfg`
+  - Add a kernel to the default jupyterlab environment
+    `ipython kernel install --user --name=sfg`
   
 # Usage
 ## Read data

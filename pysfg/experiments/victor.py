@@ -60,7 +60,7 @@ def spectrum(
         axis=(0, 1) # Median over pp_delay and scans
     )
 
-    if instance(wavenumber, type(None)):
+    if isinstance(wavenumber, type(None)):
         wavenumber = from_victor_header(
             data
            ).wavenumber[data_select.pixel]
