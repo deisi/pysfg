@@ -21,10 +21,9 @@ data:
     intensity_data:  "../tests/data/gold.dat"
     intensity_selector:
       spectra: 0 # Lets use some other spectrum of the same data file
-      # pixels to use
-      pixel: [520, 810]
-      #In particular a gold or quartz spectrum should contain all pixels. But for educational purpose, this
-      #is how you trim down to only a subset of pixels.
+      pixel: [520, 810] # A list in [start, stop, step] order
+      scans: [0, 3] # use onlay the first three scans.
+      pp_delays: null # This is the same as not putting it at all
     background_data: "../tests/data/gold_bg.dat"
     background_selector:
       spectra: 0

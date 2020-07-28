@@ -544,7 +544,7 @@ class Trace():
 def json_to_spectrum(*args, **kwargs):
     """Read Spectrum for json file."""
     df = pd.read_json(*args, **kwargs)
-    return Spectrum(df.intensity, df.baseline, df.norm, df.wavenumber)
+    return Spectrum(intensity=df.intensity, baseline=df.baseline, norm=df.norm, wavenumber=df.wavenumber, intensityE=df.intensityE, pixel=df.pixel)
 
 def _json_to_dict(*args, **kwargs):
     df = pd.read_json(*args, **kwargs)

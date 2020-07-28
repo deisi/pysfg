@@ -38,6 +38,8 @@ def make_spectrum(
     except:
         raise ValueError("data dict must contain keyword 'data'")
 
+    if not isinstance(norm, type(None)) and not isinstance(norm, pysfg.spectrum.Spectrum):
+        raise TypeError('Cant use norm type of {}, {}'.format(type(norm), norm))
 
     # Handle various background data inputs
     if isinstance(background_data, dict):
@@ -67,12 +69,9 @@ def make_spectrum(
         )
     wavenumber = calibration.wavenumber[data_select.pixel]
 
-    if not isinstance(norm, type(None)):
-        if not isinstance(norm, pysfg.Spectrum):
-            raise TypeError('Norm must be of type pysfg.Spectrum')
-
-        if len(norm) != len(intensity):
-            norm = norm[data_select.pixel]
+    if isinstance(norm, pysfg.spectrum.Spectrum):
+        if len(norm.basesubed) != len(intensity):
+            norm = norm.basesubed[data_select.pixel]
 
     return pysfg.Spectrum(
         intensity=intensity,
@@ -108,7 +107,6 @@ def run(config):
     background_data = pysfg.read.victor.data_file(background_data)
 
     # Get calibration. Not passed vales are read from datafile.
-    # WARNING: Not all setups export the information correctly.
     calibration_config = config.get('calibration', {})
     calibration = pysfg.Calibration(
         calibration_config.get('central_wl', intensity_data['central_wl']),
@@ -116,6 +114,8 @@ def run(config):
         calibration_config.get('calib_central_wl', intensity_data['calib_central_wl']),
         calibration_config.get('calib_coeff', intensity_data['calib_coeff'])
     )
+
+    logging.info('Using data_select is:\n{}'.format(intensity_selector))
     logging.info('Using Calibration with:\n{}'.format(calibration))
 
     # Make a general spectrum object
