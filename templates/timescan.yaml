@@ -1,0 +1,29 @@
+calibration:
+    vis_wl: 799.7 # Wavelength of the visible
+    calib_central_wl: 680 # central wavelength during calibration
+    calib_coeff: [0.080881, 615.18] # calibration coefficients from calibration
+data:
+  - intensity_data: "../tests/data/dynamic_test_data.dat"
+    intensity_selector:
+      spectra: 0
+      pixel: [520, 810]
+    intensity_filter:
+      gaussian_filter1d:
+        sigma: 5
+    background_data: "../tests/data/dynamic_test_data_bg.dat"
+    background_selector:
+      spectra: 0
+    norm_data: "./cache/quartz_1.json"
+    name: "./cache/pumped.json"
+  - intensity_data: "../tests/data/dynamic_test_data.dat"
+    intensity_selector:
+      spectra: 1
+      pixel: [520, 810]
+    intensity_filter:
+      gaussian_filter1d:
+        sigma: 5
+    background_data: "../tests/data/dynamic_test_data_bg.dat"
+    background_selector:
+      spectra: 0
+    norm_data: "./cache/quartz_1.json"
+    name: "./cache/probed.json"

@@ -85,21 +85,21 @@ def make_spectrum(
 def run(config):
     """This is run per top level element of the config.yaml file."""
     logging.debug(config)
+    # Read config
     intensity_data = config['intensity_data']
     fpath = os.path.split(intensity_data)[0]
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
-
     background_data = config['background_data']
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
-    # Background and intensity must have same pixel count. Thus background is overwritten by intensity
-    background_selector.pixel = intensity_selector.pixel
-
     norm_data = config.get('norm_data')
+    calibration_config = config.get('calibration', {})
+    name = config['name']
+
+    # Sanetize config
+    background_selector.pixel = intensity_selector.pixel
     if norm_data:
         norm_data = pysfg.spectrum.json_to_spectrum(norm_data)
 
-    name = config['name']
-    #TODO: Add pp_delay and scan selection
 
     # Import Data
     logging.info('Importing: '+ intensity_data)
@@ -107,7 +107,6 @@ def run(config):
     background_data = pysfg.read.victor.data_file(background_data)
 
     # Get calibration. Not passed vales are read from datafile.
-    calibration_config = config.get('calibration', {})
     calibration = pysfg.Calibration(
         calibration_config.get('central_wl', intensity_data['central_wl']),
         calibration_config.get('vis_wl', intensity_data['vis_wl']),

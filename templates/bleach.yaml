@@ -1,0 +1,7 @@
+data:
+  - pumped_data: "./cache/pumped.json"
+    probed_data: "./cache/probed.json"
+    mode: 'difference'
+    static_difference_correction: false
+    heat_correction: false
+    name: "./cache/bleach.json"
