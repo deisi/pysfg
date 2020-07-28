@@ -1,0 +1,16 @@
+
+data:
+  -
+    intensity_data:  "../tests/data/sc_d2o-dopc.dat"
+    intensity_selector:
+      spectra: 1
+      # you can pass all kwargs of pysfg.SelectorPP here. Thus also:
+      pixel: [200, 1200]
+      # scans: [start, stop, step]
+      # pp_delays: [start, stop, step]
+    background_data: "../tests/data/bg_d2o-docpe.dat"
+    background_selector:
+      spectra: 1
+    # Norm data must be the result of a prior static_spectra.py run.
+    norm_data: "./cache/quartz_1.json"
+    name: "cache/sc_d2o-dopc_static.json"

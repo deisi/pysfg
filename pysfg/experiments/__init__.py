@@ -17,8 +17,8 @@ def spectrum(
 ):
     """Make Spectrum object from static SFG measurment.
 
-    data: victor data dict
-    background: victor data dict
+    data: data dict. A 4D numpy array with the keyword 'data' is expected.
+    background: data dict with background data. Same format as above.
     norm: pysfg.Spectrum, for normalization or array or integer
     data_select: pysfg.SelctorPP object.
     background_select: pysfg.SelectorPP object
@@ -67,6 +67,10 @@ def spectrum(
             data['central_wl'], data['vis_wl'], data['calib_central_wl'], data['calib_coeff']
         )
     wavenumber = calibration.wavenumber[data_select.pixel]
+
+    if not isinstance(norm, type(None)):
+        if len(norm) != len(intensity):
+            norm = norm[data_select.pixel]
 
     return Spectrum(
         intensity=intensity,

@@ -1,0 +1,31 @@
+calibration:
+    vis_wl: 799.7 # Wavelength of the visible
+    calib_central_wl: 680 # central wavelength during calibration
+    calib_coeff: [0.080881, 615.18] # calibration coefficients from calibration
+data:
+  -
+    # Path to a data file that contains raw intensity data.
+    intensity_data:  "../tests/data/gold.dat"
+    # Configure selection of data. E.g. pixels, pp_delays, spectra or scans.
+    intensity_selector:
+      # The index of the spectrum that should be used.
+      spectra: 1
+    # Path to a data file that contains raw background data.
+    background_data: "../tests/data/gold_bg.dat" # Relative to fpath
+    background_selector:
+      spectra: 1
+      #pixel: Has no function here, as it is Overwritten by the intensity_selector pixels.
+    name: "cache/gold_1.json"
+  # You can have as many of these blocks as you want
+  -
+    intensity_data:  "../tests/data/gold.dat"
+    intensity_selector:
+      spectra: 0 # Lets use some other spectrum of the same data file
+      # pixels to use
+      pixel: [520, 810]
+      #In particular a gold or quartz spectrum should contain all pixels. But for educational purpose, this
+      #is how you trim down to only a subset of pixels.
+    background_data: "../tests/data/gold_bg.dat"
+    background_selector:
+      spectra: 0
+    name: "cache/gold_2.json"

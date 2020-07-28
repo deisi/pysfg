@@ -2,14 +2,15 @@
 
 class SelectorPP:
     def __init__(
-            self, pp_delays=slice(None), scans=slice(None), spectra=slice(None), pixel=slice(None)
+            self, pp_delays=None, scans=None, spectra=None, pixel=None
     ):
         """Selector object to slice in 4D pump-probe data files.
 
         Helps to deal with the correct slicing of the 4D PumpProbe data read of
         by `pysfg.read.victor.data_file`. The advantage of this class is, that
         one doesn't need to pass all axis selections in the correct order each
-        time. Instead the class returns them allways in the correct order.
+        time. Instead the class returns them always in the correct order. Not that only integers or
+        slices are allowed. Index indexing like [1 ,2, 4, 7] would fail.
 
         Example:
         ```
@@ -27,11 +28,18 @@ class SelectorPP:
         use data[SelectorPP.select] to select a subset of data.
 
         """
-        self.select = (pp_delays, scans, spectra, pixel)
+        self.select = [slice(None), slice(None), slice(None), slice(None)]
+        self.pp_delays = pp_delays
+        self.scans = scans
+        self.spectra = spectra
+        self.pixel = pixel
 
-    def _test(self, value):
-        if not isinstance(value, int) or not isinstance(value, type(slice)) or not hasattr(value, __iter__):
-            raise ValueError("Must pass int or slice or iterable")
+    def _cast(self, value):
+        if isinstance(value, int) or isinstance(value, slice):
+            return value
+        elif isinstance(value, type(None)):
+            return slice(value)
+        return slice(*value)
 
     @property
     def pp_delays(self):
@@ -40,8 +48,7 @@ class SelectorPP:
 
     @pp_delays.setter
     def pp_delays(self, value):
-        self._test(value)
-        self.select[0] = value
+        self.select[0] = self._cast(value)
 
     @property
     def scans(self):
@@ -50,8 +57,7 @@ class SelectorPP:
 
     @scans.setter
     def scans(self, value):
-        self._test(value)
-        self.select[1] = value
+        self.select[1] = self._cast(value)
 
     @property
     def spectra(self):
@@ -60,8 +66,7 @@ class SelectorPP:
 
     @spectra.setter
     def spectra(self, value):
-        self._test(value)
-        self.select[2] = value
+        self.select[2] = self._cast(value)
 
     @property
     def pixel(self):
@@ -69,9 +74,8 @@ class SelectorPP:
         return self.select[3]
 
     @pixel.setter
-    def pixel(selv, value):
-        self._test(value)
-        self.select[3] = value
+    def pixel(self, value):
+        self.select[3] = self._cast(value)
 
     def __repr__(self):
         return str(self.select)

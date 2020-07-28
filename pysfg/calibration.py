@@ -49,6 +49,10 @@ class Calibration:
         # rounding on 2 digits is more than enough
         return np.round(10**7/(1/(1/self.wavelength - 1/self.vis_wl)), 2)
 
+    def __str__(self):
+        str = "Central Wavelength: {}\nVisible Wavelength: {}\nCalibration Coefficients: {}\nCalibration Central Wavelength: {}\n".format(self.central_wl, self.vis_wl, self.calib_coeff, self.calib_central_wl)
+        return str
+
 
 def from_victor_header(header):
     """Returns Victor calibration class object by reading a victor data header.

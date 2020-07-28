@@ -1,0 +1,13 @@
+data:
+  -
+    intensity_data:  "../tests/data/sc_quartz.dat"
+    intensity_selector:
+      spectra: 0
+      # you can pass all kwargs of pysfg.SelectorPP here. Thus also:
+      # pixel: [start, stop, step]
+      # scans: [start, stop, step]
+      # pp_delays: [start, stop, step]
+    background_data: "../tests/data/bg_quartz.dat"
+    background_selector:
+      spectra: 0
+    name: "cache/quartz_1.json"
