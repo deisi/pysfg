@@ -2,15 +2,32 @@
 
 Fitting is based in iminnuit. Make yourself famialiar with
 https://github.com/scikit-hep/iminuit
-
-Thus most of the times, you will be using eg:
-
 """
 import numpy as np
+import json
+import logging
+import sys
 from scipy.special import erf, erfc
 from scipy.stats import norm
 from iminuit import Minuit, describe
 from iminuit.util import make_func_code
+
+
+def from_json(fname):
+    """Import from json serialized version. fname is a string with a path
+    to where to read the file from.
+    """
+    with open(fname) as json_file:
+        d = json.load(json_file)
+
+    thismodule = sys.modules[__name__]
+    FitClass = getattr(thismodule, d.pop('class'))
+    # errors are just there for manual reusage later. They can not be
+    # im- or exported by iminuit. Thus we pop them out of the dict.
+    errors = d.pop('errors')
+    return FitClass(
+            **d
+        )
 
 
 class LeastSquares:
@@ -46,16 +63,32 @@ class FitBase():
         """This must be implemented by the subcalsses."""
         raise NotImplemented
 
+    @property
+    def dict(self):
+        """A serialized representation of this fit class"""
+        return {
+                "class": self.__class__.__name__,
+                "x": list(self.x),
+                "y": list(self.y),
+                "yerr": list(self.yerr),
+                **dict(self.minuit.values),
+                **{"fix_" + key: value for key, value in self.minuit.fixed.items()},
+                "errors": dict(self.minuit.errors),
+                }
+
+
     def fit(self, x):
         """Fit function at value x."""
         return self.model(x, *self.minuit.args)
 
-    def to_json(self):
-        """Export json serialized version"""
-        raise NotImplemented
+    def to_json(self, fname):
+        """Export json serialized version. fname is a string with a path to
+        where to save the serialized json object.
+        """
+        logging.info("Saving fit to to {}".format(fname))
+        with open(fname, 'w') as outfile:
+            json.dump(self.dict, outfile, indent=2)
 
-    def from_json(self):
-        """Import from json serialized version"""
 
 class Gaussian(FitBase):
     def __init__(self, x, y, yerr=None, **kwargs):

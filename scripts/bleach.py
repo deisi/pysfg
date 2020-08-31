@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import argparse
 import logging
 import yaml
@@ -10,12 +11,12 @@ import numpy as np
 def run(config):
     logging.debug(config)
     # Read config
-    pumped_data = pysfg.spectrum.json_to_pumpprobe(config["pumped_data"])
-    probed_data = pysfg.spectrum.json_to_pumpprobe(config["probed_data"])
+    pumped_data = pysfg.spectrum.json_to_pumpprobe(Path(config["pumped_data"]))
+    probed_data = pysfg.spectrum.json_to_pumpprobe(Path(config["probed_data"]))
     mode = config.get('mode', 'difference')
     static_difference_correction = config.get('static_difference_correction', False)
     heat_correction = config.get('heat_correction', False)
-    name = config['name']
+    out = Path(config['out'])
 
     # This generates a `pysfg.Bleach` object.
     if mode == "difference":
@@ -45,8 +46,8 @@ def run(config):
     if mode == "ratio":
         bleach.normalized += 1
     # Save bleach in cache folder
-    logging.info('Saving to: {}'.format(name))
-    bleach.to_json(name)
+    logging.info('Saving to: {}'.format(out))
+    bleach.to_json(out)
 
 
 def main():

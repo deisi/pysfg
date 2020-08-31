@@ -13,4 +13,4 @@ data:
       spectra: 1
     # Norm data must be the result of a prior static_spectra.py run.
     norm_data: "./cache/quartz_1.json"
-    name: "cache/sc_d2o-dopc_static.json"
+    out: "cache/sc_d2o-dopc_static.json"

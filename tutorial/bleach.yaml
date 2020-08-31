@@ -6,7 +6,7 @@ data:
     heat_correction: 
         tau: 700
         c: 0
-    name: "./cache/bleach.json"
+    out: "./cache/bleach.json"
   - pumped_data: "./cache/pumped.json"
     probed_data: "./cache/probed.json"
     mode: 'ratio'
@@ -14,4 +14,4 @@ data:
     heat_correction: 
         tau: 700
         c: 0
-    name: "./cache/bleach1.json"
+    out: "./cache/bleach1.json"

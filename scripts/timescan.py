@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+from pathlib import Path
 import numpy as np
 import argparse
 import pysfg
@@ -8,22 +11,22 @@ from scipy.stats import sem
 def run(config):
     logging.debug(config)
     # Read config
-    intensity_data = config['intensity_data']
+    intensity_data = Path(config['intensity_data'])
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
     intensity_filter = config.get('intensity_filter', None)
-    background_data = config['background_data']
+    background_data = Path(config['background_data'])
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
     background_selector.pixel = intensity_selector.pixel
     norm_data = config.get('norm_data')
     calibration_config = config.get('calibration', {})
-    name = config['name']
+    out = Path(config['out'])
     drift_correction_params = config.get('drift_correction_params')
     pump_freq=config.get('pump_freq')
     pump_width=config.get('pump_width')
     cc_width=config.get('cc_width')
 
     # Import Data
-    logging.info('Importing: '+ intensity_data)
+    logging.info('Importing: {}'.format(intensity_data))
     intensity_data = pysfg.read.victor.data_file(intensity_data)
     background_data = pysfg.read.victor.data_file(background_data)
 
@@ -67,7 +70,7 @@ def run(config):
 
     norm = None
     if norm_data:
-        norm = pysfg.spectrum.json_to_spectrum(norm_data).basesubed
+        norm = pysfg.spectrum.json_to_spectrum(Path(norm_data)).basesubed
         if len(norm) != np.shape(intensity)[-1]:
             norm = norm[intensity_selector.pixel]
 
@@ -84,9 +87,9 @@ def run(config):
         cc_width=cc_width,
     )
 
-    logging.info('Saving to: {}'.format(name))
+    logging.info('Saving to: {}'.format(out))
     #TODO: This currently doesnt save pump_width, pump_freq and cc_width
-    spectrum.to_json(name)
+    spectrum.to_json(out)
 
 
 def main():

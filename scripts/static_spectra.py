@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import numpy as np
 import pysfg
 import os
@@ -86,23 +87,22 @@ def run(config):
     """This is run per top level element of the config.yaml file."""
     logging.debug(config)
     # Read config
-    intensity_data = config['intensity_data']
-    fpath = os.path.split(intensity_data)[0]
+    intensity_data = Path(config['intensity_data'])
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
-    background_data = config['background_data']
+    background_data = Path(config['background_data'])
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
     norm_data = config.get('norm_data')
     calibration_config = config.get('calibration', {})
-    name = config['name']
+    out = Path(config['out'])
 
     # Sanetize config
     background_selector.pixel = intensity_selector.pixel
     if norm_data:
-        norm_data = pysfg.spectrum.json_to_spectrum(norm_data)
+        norm_data = pysfg.spectrum.json_to_spectrum(Path(norm_data))
 
 
     # Import Data
-    logging.info('Importing: '+ intensity_data)
+    logging.info('Importing: {}'.format(intensity_data))
     intensity_data = pysfg.read.victor.data_file(intensity_data)
     background_data = pysfg.read.victor.data_file(background_data)
 
@@ -128,8 +128,8 @@ def run(config):
        )
 
     # Save results
-    logging.info('Save as: ' + name)
-    spectrum.to_json(name)
+    logging.info('Save as: {}'.format(out))
+    spectrum.to_json(out)
 
 
 def main():
