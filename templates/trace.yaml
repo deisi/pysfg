@@ -1,0 +1,8 @@
+data:
+  - bleach_data: "./cache/bleach.json"
+    traces:
+      # This is where the resulting trace will be saved
+      - name: "./cache/hf.json" 
+        pixel: [575, 650] # you can use pixels
+      - name: "./cache/lf.json"
+        wavenumber: [2500, 2600] # or wavenumber

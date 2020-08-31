@@ -7,9 +7,11 @@ data:
     intensity_selector:
       spectra: 0
       pixel: [520, 810]
+    # Allos to filter the data. Currently only the gaussian_filter1d from scipy is implemented
+    # but this might change in the future. 
     intensity_filter:
       gaussian_filter1d:
-        sigma: 5
+        sigma: 5 # the width of the gaussian filter. 
     background_data: "../tests/data/dynamic_test_data_bg.dat"
     background_selector:
       spectra: 0

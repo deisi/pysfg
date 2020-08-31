@@ -4,6 +4,7 @@ import argparse
 import logging
 import yaml
 import pysfg
+import numpy as np
 
 
 def run(config):
@@ -22,7 +23,10 @@ def run(config):
         bleach = probed_data - pumped_data
     elif mode == "ratio":
         logging.info('Run ratio mode')
-        bleach = probed_data / pumped_data
+        # By removing 1 here, the subsequent heat and static_difference_corrections work
+        # correctly. At the end. we add the 1 again.
+        bleach = probed_data / pumped_data 
+        bleach.normalized -= 1
     else:
         raise ValueError('Cant understand given mode')
 
@@ -30,14 +34,16 @@ def run(config):
         logging.info('Running static difference correction')
         # This corrects for static differences between pumped and unpumped
         bleach.normalized = bleach.normalized-bleach.normalized[0]
-        if mode is 'ratio':
-            bleach.normalized += 1
+
 
     if heat_correction:
-        logging.info('Running heat correction')
+        kwargs = heat_correction
+        logging.info('Running heat correction with: {}'.format(kwargs))
         # Heat correction
-        bleach.normalized = pysfg.filter.heat_filter(bleach.normalized, bleach.pp_delay)
+        bleach.normalized = pysfg.filter.heat_filter(bleach.normalized, bleach.pp_delay, **kwargs)
 
+    if mode == "ratio":
+        bleach.normalized += 1
     # Save bleach in cache folder
     logging.info('Saving to: {}'.format(name))
     bleach.to_json(name)

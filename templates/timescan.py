@@ -10,7 +10,7 @@ def run(config):
     # Read config
     intensity_data = config['intensity_data']
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
-    intensity_filter = config.get('intensity_filter', {})
+    intensity_filter = config.get('intensity_filter', None)
     background_data = config['background_data']
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
     background_selector.pixel = intensity_selector.pixel
@@ -34,24 +34,36 @@ def run(config):
         calibration_config.get('calib_central_wl', intensity_data['calib_central_wl']),
         calibration_config.get('calib_coeff', intensity_data['calib_coeff'])
     )
+    
+    # Setup filter.
+    if intensity_filter:
+        from scipy.ndimage import gaussian_filter1d
+        gf_keywords = intensity_filter.get('gaussian_filter1d')
+        if gf_keywords:
+            logging.info('Use gaussian_filter1d with kwargs:{}'.format(gf_keywords))
+            filter_function = lambda x: gaussian_filter1d(x, **gf_keywords)
 
     logging.info('Using data_select is:\n{}'.format(intensity_selector))
     logging.info('Using Calibration with:\n{}'.format(calibration))
 
     intensity = np.median(
-        intensity_data['data'][intensity_selector.select],
-        axis=(1) # Estimate uncertainties from scans
+        intensity_data['data'][intensity_selector.tselect],
+        axis=(1) # Takes the median of the scans
     )
+    if intensity_filter:
+        intensity = filter_function(intensity)
 
     intensityE = sem(
-        intensity_data['data'][intensity_selector.select],
+        intensity_data['data'][intensity_selector.tselect],
         axis=(1) # Estimate uncertainties from scans
     )
 
     baseline = np.median(
-        background_data['data'][background_selector.select],
+        background_data['data'][background_selector.tselect],
         axis=(1)
     )
+    if intensity_filter:
+        baseline = filter_function(baseline)
 
     norm = None
     if norm_data:
@@ -81,7 +93,7 @@ def main():
     parser = argparse.ArgumentParser(description='Compile normalization data.')
     parser.add_argument(
         'config',
-        help='Path to a normalization.yaml configuration file.'
+        help='Path to a yaml configuration file.'
     )
     parser.add_argument(
         '--debug', default="INFO",

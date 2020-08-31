@@ -25,7 +25,7 @@ class SelectorPP:
 
         ```
 
-        use data[SelectorPP.select] to select a subset of data.
+        use data[SelectorPP.tselect] to select a subset of data.
 
         """
         self.select = [slice(None), slice(None), slice(None), slice(None)]
@@ -40,6 +40,11 @@ class SelectorPP:
         elif isinstance(value, type(None)):
             return slice(value)
         return slice(*value)
+
+    @property
+    def tselect(self):
+        """Use this to select."""
+        return tuple(self.select)
 
     @property
     def pp_delays(self):

@@ -11,10 +11,11 @@ data:
       # The index of the spectrum that should be used.
       spectra: 1
     # Path to a data file that contains raw background data.
-    background_data: "../tests/data/gold_bg.dat" # Relative to fpath
+    background_data: "../tests/data/gold_bg.dat"
     background_selector:
       spectra: 1
-      #pixel: Has no function here, as it is Overwritten by the intensity_selector pixels.
+      #pixel: Has no function here, as it is overwritten by the intensity_selector pixels.
+    # name is where the result of the calibration should be saved.
     name: "cache/gold_1.json"
   # You can have as many of these blocks as you want
   -

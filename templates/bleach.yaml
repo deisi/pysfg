@@ -2,6 +2,16 @@ data:
   - pumped_data: "./cache/pumped.json"
     probed_data: "./cache/probed.json"
     mode: 'difference'
-    static_difference_correction: false
-    heat_correction: false
+    static_difference_correction: True
+    heat_correction: 
+        tau: 700
+        c: 0
     name: "./cache/bleach.json"
+  - pumped_data: "./cache/pumped.json"
+    probed_data: "./cache/probed.json"
+    mode: 'ratio'
+    static_difference_correction: True
+    heat_correction: 
+        tau: 700
+        c: 0
+    name: "./cache/bleach1.json"

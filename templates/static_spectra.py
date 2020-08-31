@@ -44,7 +44,7 @@ def make_spectrum(
     # Handle various background data inputs
     if isinstance(background_data, dict):
         baseline = np.median(
-            background_data['data'][background_select.select],
+            background_data['data'][background_select.tselect],
             axis=(0, 1)
         )
     elif isinstance(background_data, pysfg.Spectrum):
@@ -54,12 +54,12 @@ def make_spectrum(
         baseline = background_data
 
     intensity = np.median(
-        data['data'][data_select.select],
+        data['data'][data_select.tselect],
         axis=(0, 1) # Median over pp_delay and scans
     )
 
     intensityE = sem(
-        np.median(data['data'][data_select.select], axis=0),
+        np.median(data['data'][data_select.tselect], axis=0),
         axis=(0) # Median over pp_delay sem over scans.
     )
 
@@ -133,10 +133,10 @@ def run(config):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Compile normalization data.')
+    parser = argparse.ArgumentParser(description='Analyse static sfg data.')
     parser.add_argument(
         'config',
-        help='Path to a normalization.yaml configuration file.'
+        help='Path to a yaml configuration file.'
     )
     parser.add_argument(
         '--debug', default="INFO",
