@@ -5,3 +5,4 @@
 **/pysfg.egg-info/
 **/cache
 *.swp
+.#*
