@@ -16,7 +16,7 @@ data:
     background_selector:
       spectra: 0
     norm_data: "./cache/quartz_1.json"
-    name: "./cache/pumped.json"
+    out: "./cache/pumped.json"
   - intensity_data: "../tests/data/dynamic_test_data.dat"
     intensity_selector:
       spectra: 1
@@ -28,4 +28,4 @@ data:
     background_selector:
       spectra: 0
     norm_data: "./cache/quartz_1.json"
-    name: "./cache/probed.json"
+    out: "./cache/probed.json"

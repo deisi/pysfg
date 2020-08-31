@@ -10,4 +10,4 @@ data:
     background_data: "../tests/data/bg_quartz.dat"
     background_selector:
       spectra: 0
-    name: "cache/quartz_1.json"
+    out: "cache/quartz_1.json"

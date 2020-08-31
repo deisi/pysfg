@@ -15,8 +15,8 @@ data:
     background_selector:
       spectra: 1
       #pixel: Has no function here, as it is overwritten by the intensity_selector pixels.
-    # name is where the result of the calibration should be saved.
-    name: "cache/gold_1.json"
+    # out is where the result of the calibration should be saved.
+    out: "cache/gold_1.json"
   # You can have as many of these blocks as you want
   -
     intensity_data:  "../tests/data/gold.dat"
@@ -28,4 +28,4 @@ data:
     background_data: "../tests/data/gold_bg.dat"
     background_selector:
       spectra: 0
-    name: "cache/gold_2.json"
+    out: "cache/gold_2.json"

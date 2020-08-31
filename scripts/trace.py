@@ -1,6 +1,6 @@
-
 #!/usr/bin/env python3
 
+from pathlib import Path
 import argparse
 import logging
 import yaml
@@ -10,10 +10,10 @@ import numpy as np
 
 def run(config):
     logging.debug(config)
-    bleach_data = pysfg.spectrum.json_to_bleach(config["bleach_data"])
+    bleach_data = pysfg.spectrum.json_to_bleach(Path(config["bleach_data"]))
     traces_config = config.get('traces')
     for trace_config_block in traces_config:
-        name = trace_config_block['name']
+        out = Path(trace_config_block['out'])
         pixel = slice(*trace_config_block.get('pixel', [None]))
         wavenumber = trace_config_block.get('wavenumber')
         if wavenumber:
@@ -22,8 +22,8 @@ def run(config):
             _p = bleach_data.pixel[index]
             pixel = slice(_p.min(), _p.max())
         trace = bleach_data.get_trace(pixel=pixel)
-        logging.info('Saving to: {}'.format(name))
-        trace.to_json(name)
+        logging.info('Saving to: {}'.format(out))
+        trace.to_json(out)
 
 
 def main():

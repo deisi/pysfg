@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import argparse
 import logging
 import yaml
@@ -10,13 +11,15 @@ import IPython.display as ipd
 
 def run(config):
     logging.debug(config)
-    fpath = config['trace_data']
+    fpath = Path(config['trace_data'])
     roi = slice(*config.get('roi', [None]))
     roi_pp_delay = config.get('roi_pp_delay')
     pp_delay_scale = config.get('pp_delay_scale', 1)
     bleach_scale = config.get('bleach_scale', 1)
+    out = Path(config['out'])
     kwargs = config.get('kwargs', {})
     tr = pysfg.json_to_trace(fpath)
+    logging.info('Running {}'.format(fpath))
 
     if roi_pp_delay:
         roi_pp_delay = slice(*roi_pp_delay)
@@ -35,6 +38,7 @@ def run(config):
     #print(fit.minuit.values)
     #print(fit.minuit.accurate)
     #print(fit.minuit.np_covariance())
+    fit.to_json(out)
     return fit
 
 def main():

@@ -4,7 +4,7 @@
 #          effect and thus the most important one.
 # TODO: There are some not implemented cases left that are nice to haves.
 
-
+from pathlib import Path
 from scipy.ndimage import gaussian_filter1d
 import numpy as np
 import pandas as pd
