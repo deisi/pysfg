@@ -8,27 +8,26 @@ import logging
 import yaml
 from scipy.stats import sem
 
+
 def run(config):
     logging.debug(config)
     # Read config
     intensity_data = Path(config['intensity_data'])
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
     intensity_filter = config.get('intensity_filter', None)
-    background_data = Path(config['background_data'])
+    background_data = config.get('background_data')
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
     background_selector.pixel = intensity_selector.pixel
     norm_data = config.get('norm_data')
     calibration_config = config.get('calibration', {})
     out = Path(config['out'])
-    drift_correction_params = config.get('drift_correction_params')
-    pump_freq=config.get('pump_freq')
-    pump_width=config.get('pump_width')
-    cc_width=config.get('cc_width')
+    pump_freq = config.get('pump_freq')
+    pump_width = config.get('pump_width')
+    cc_width = config.get('cc_width')
 
     # Import Data
-    logging.info('Importing: {}'.format(intensity_data))
+    logging.info('Importing: %s', intensity_data)
     intensity_data = pysfg.read.victor.data_file(intensity_data)
-    background_data = pysfg.read.victor.data_file(background_data)
 
     # Get calibration. Not passed vales are read from datafile.
     calibration = pysfg.Calibration(
@@ -37,34 +36,42 @@ def run(config):
         calibration_config.get('calib_central_wl', intensity_data['calib_central_wl']),
         calibration_config.get('calib_coeff', intensity_data['calib_coeff'])
     )
-    
+
     # Setup filter.
     if intensity_filter:
         from scipy.ndimage import gaussian_filter1d
         gf_keywords = intensity_filter.get('gaussian_filter1d')
         if gf_keywords:
-            logging.info('Use gaussian_filter1d with kwargs:{}'.format(gf_keywords))
+            logging.info('Use gaussian_filter1d with kwargs: %s', gf_keywords)
             filter_function = lambda x: gaussian_filter1d(x, **gf_keywords)
 
-    logging.info('Using data_select is:\n{}'.format(intensity_selector))
-    logging.info('Using Calibration with:\n{}'.format(calibration))
+    logging.info('Using data_select is: %s', intensity_selector)
+    logging.info('Using Calibration with: %s', calibration)
 
     intensity = np.median(
         intensity_data['data'][intensity_selector.tselect],
-        axis=(1) # Takes the median of the scans
+        axis=(1)  # Takes the median of the scans
     )
     if intensity_filter:
         intensity = filter_function(intensity)
 
     intensityE = sem(
         intensity_data['data'][intensity_selector.tselect],
-        axis=(1) # Estimate uncertainties from scans
+        axis=(1)  # Estimate uncertainties from scans
     )
 
-    baseline = np.median(
-        background_data['data'][background_selector.tselect],
-        axis=(1)
-    )
+    # background can be a path, number or None
+    if isinstance(background_data, str):
+        background_data = pysfg.read.victor.data_file(Path(background_data))
+        baseline = np.median(
+            background_data['data'][background_selector.tselect],
+            axis=(1)
+        )
+    elif background_data:
+        baseline = background_data * np.ones_like(intensity)
+    else:
+        baseline = np.zeros_like(intensity)
+
     if intensity_filter:
         baseline = filter_function(baseline)
 
@@ -87,8 +94,7 @@ def run(config):
         cc_width=cc_width,
     )
 
-    logging.info('Saving to: {}'.format(out))
-    #TODO: This currently doesnt save pump_width, pump_freq and cc_width
+    logging.info('Saving to: %s', out)
     spectrum.to_json(out)
 
 

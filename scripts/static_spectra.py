@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+A script to analyse static sfg data with.
+
+One needs to pass a propper configuration.yaml file describing the properties
+of the analysis to this script.
+"""
 
 from pathlib import Path
 import numpy as np
