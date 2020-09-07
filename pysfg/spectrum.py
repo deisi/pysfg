@@ -121,7 +121,7 @@ class BaseSpectrum():
             pixel = np.arange(self.shape[-1])
         elif isinstance(pixel, slice):
             if isinstance(pixel.start, type(None)) and isinstance(pixel.stop, type(None)):
-                pixel = np.arange(0, len(self.intensity[-1]))
+                pixel = np.arange(0, self.shape[-1])
             elif isinstance(pixel.start, type(None)) or isinstance(pixel.stop, type(None)):
                 raise ValueError('Strange pixel slice: ' + pixel)
             else:
