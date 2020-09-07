@@ -1,7 +1,6 @@
 
 data:
-  -
-    intensity_data:  "../tests/data/sc_d2o-dopc.dat"
+  - intensity_data:  "../tests/data/sc_d2o-dopc.dat"
     intensity_selector:
       spectra: 1
       # you can pass all kwargs of pysfg.SelectorPP here. Thus also:
