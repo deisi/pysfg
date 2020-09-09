@@ -22,12 +22,13 @@ def from_json(fname):
 
     thismodule = sys.modules[__name__]
     FitClass = getattr(thismodule, d.pop('class'))
-    # errors are just there for manual reusage later. They can not be
-    # im- or exported by iminuit. Thus we pop them out of the dict.
     errors = d.pop('errors')
-    return FitClass(
-            **d
+
+    fit = FitClass(
+            **d, errordef=1
         )
+    fit.minuit.migrad()
+    return fit
 
 
 class LeastSquares:
