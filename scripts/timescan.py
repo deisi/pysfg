@@ -106,7 +106,6 @@ def run(config):
         cc_width=cc_width,
     )
 
-    logging.info('Saving to: %s', out)
     spectrum.to_json(out)
 
 

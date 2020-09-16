@@ -82,7 +82,7 @@ def from_victor_file(fpath):
     return from_victor_header(header)
 
 def from_victor_file_wavenumber(fpath):
-    """Read a victor file and return list of wavenumbers.
+    """Read a victor file and return wavenumber array.
 
     Convenience function of one want to read in the calibration from a victor
     `.dat` file. Will only return the wavenumber as np.array.

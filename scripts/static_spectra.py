@@ -134,7 +134,6 @@ def run(config):
        )
 
     # Save results
-    logging.info('Save as: {}'.format(out))
     spectrum.to_json(out)
 
 

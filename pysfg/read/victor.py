@@ -3,9 +3,10 @@ import datetime
 import numpy as np
 import glob
 import logging
+import os
 
-PIXEL = 1600 # Number of pixel on camera
-SPECS = 3 # Number of spectra recorded
+PIXEL = 1600  # Number of pixel on camera
+SPECS = 3  # Number of spectra recorded
 
 
 def header(fpath):

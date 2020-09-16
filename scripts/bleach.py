@@ -46,7 +46,6 @@ def run(config):
     if mode == "ratio":
         bleach.normalized += 1
     # Save bleach in cache folder
-    logging.info('Saving to: {}'.format(out))
     bleach.to_json(out)
 
 

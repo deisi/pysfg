@@ -86,7 +86,7 @@ class FitBase():
         """Export json serialized version. fname is a string with a path to
         where to save the serialized json object.
         """
-        logging.info("Saving fit to to {}".format(fname))
+        logging.info('Saving to: %s' % fname)
         with open(fname, 'w') as outfile:
             json.dump(self.dict, outfile, indent=2)
 

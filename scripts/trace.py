@@ -22,7 +22,6 @@ def run(config):
             _p = bleach_data.pixel[index]
             pixel = slice(_p.min(), _p.max())
         trace = bleach_data.get_trace(pixel=pixel)
-        logging.info('Saving to: {}'.format(out))
         trace.to_json(out)
 
 

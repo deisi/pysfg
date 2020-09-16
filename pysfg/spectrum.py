@@ -9,9 +9,10 @@ from scipy.ndimage import gaussian_filter1d
 import numpy as np
 import pandas as pd
 import logging
+import json
 
 class BaseSpectrum():
-    """Abstract base class for spectral data."""
+    """Abstract base class for spectral data classes."""
     def __init__(
             self, intensity, baseline=None, norm=None, wavenumber=None, intensityE=None, pixel=None
     ):
@@ -54,7 +55,7 @@ class BaseSpectrum():
             baseline = np.zeros_like(self.intensity)
         else:
             baseline = np.ones_like(self.intensity) * baseline
-        # I think this cant trigger
+        # Checking the shape to be really sure
         if np.shape(baseline) != self.shape:
             raise ValueError('Shape of baseline and intensity must match')
         self._baseline = np.array(baseline)
@@ -69,7 +70,6 @@ class BaseSpectrum():
             norm = np.ones_like(self.intensity)
         else:
             norm = np.ones_like(self.intensity) * norm
-        # I think this cant trigger
         if np.shape(norm) != np.shape(self.intensity):
             raise ValueError('Shape of norm and intensity must match')
         self._norm = np.array(norm)
@@ -139,14 +139,13 @@ class BaseSpectrum():
 
     def to_json(self, *args, **kwargs):
         """Save spectrum to json with pd.Dataframe.to_json."""
+        logging.info('Saving to: %s' % args[0])
         self.df.to_json(*args, **kwargs)
-
 
     def gaussian_filter1d(self, prop, *args, **kwargs):
         """Return gaussian filtered version of prop."""
         data = getattr(self, prop)
         return gaussian_filter1d(data *args, **kwargs)
-
 
 
 class Spectrum(BaseSpectrum):
@@ -394,13 +393,13 @@ class Bleach():
         DataFrames with `Bleach.df`. Data can be imported with `spectrum.json_to_bleach`
 
         """
-        self.intensity=intensity
-        self.baseline=baseline
-        self.norm=norm
-        self.wavenumber=wavenumber
-        self.pp_delay=pp_delay
-        self.basesubed=basesubed
-        self.normalized=normalized
+        self.intensity = intensity
+        self.baseline = baseline
+        self.norm = norm
+        self.wavenumber = wavenumber
+        self.pp_delay = pp_delay
+        self.basesubed = basesubed
+        self.normalized = normalized
         self.pump_freq = pump_freq
         self.pump_width = pump_width
         self.cc_width = cc_width
@@ -421,7 +420,7 @@ class Bleach():
             df.insert(0, 'pp_delay', self.pp_delay)
             df.insert(0, 'name', [key for i in range(len(self.pp_delay))])
             dfs.append(df)
-        df = pd.concat(dfs, sort=False) # We dont need it sorted.
+        df = pd.concat(dfs, sort=False)  # We dont need it sorted.
         df.reset_index(drop=True, inplace=True)
 
         # Prepare wavenumber
@@ -438,6 +437,7 @@ class Bleach():
 
     def to_json(self, *args, **kwargs):
         """Save spectrum to json with pd.Dataframe.to_json."""
+        logging.info('Saving to: %s' % args[0])
         self.df.to_json(*args, **kwargs)
 
     def get_trace(
@@ -492,7 +492,7 @@ class Trace():
         bleachE: Uncertainty of the bleach
         """
         self.pp_delay = np.array(pp_delay)
-        self.bleach = np.array(bleach)
+        self.bleach = bleach
         self.pixel = pixel
         self.wavenumber = wavenumber
         self.wavelength = wavelength
@@ -503,20 +503,101 @@ class Trace():
         self.bleachE = bleachE
 
     @property
+    def bleach(self):
+        return self._bleach
+
+    @bleach.setter
+    def bleach(self, value):
+        if np.shape(value) != self.pp_delay.shape:
+            raise ValueError(
+                "Shape of pp_delay {} and shape of bleach {} don't match".format(
+                    value.shape, self.pp_delay.shape
+                )
+            )
+        self._bleach = np.array(value)
+
+    @property
+    def bleachE(self):
+        return self._bleachE
+
+    @bleachE.setter
+    def bleachE(self, value):
+        self._bleachE = np.array(value) * np.ones_like(self.bleach)
+
+    @property
     def pixel(self):
         return self._pixel
 
+    # This allows setting pixels wiht: a slice, a list or None and in all
+    # casis the result of pixel can be used as array index. The same holds true
+    # for wavenumber, wavelength and delay settings.
     @pixel.setter
     def pixel(self, value):
         if isinstance(value, type(None)):
-            self._pixel = (None, None)
+            self._pixel = slice(None)
         elif isinstance(value, slice):
-            self._pixel = (value.start, value.stop)
-        elif len(value) == 2:
-            self._pixel = tuple(value)
+            if value == slice(None):
+                self._pixel = value
+            else:
+                self._pixel = np.arange(value.start, value.stop, value.step)
         else:
-            self._pixel = (np.min(value), np.max(value))
+            self._pixel = np.array(value)
+            if len(self._pixel.shape) != 1:
+                raise ValueError("Can't use {} as pixel ".format(value))
 
+    @property
+    def wavenumber(self):
+        return self._wavenumber
+
+    @wavenumber.setter
+    def wavenumber(self, value):
+        if isinstance(value, type(None)):
+            self._wavenumber = slice(None)
+        elif isinstance(value, slice):
+            if value == slice(None):
+                self._wavenumber = value
+            else:
+                self._wavenumber = np.arange(value.start, value.stop, value.step)
+        else:
+            self._wavenumber = np.array(value)
+            if len(self._wavenumber.shape) != 1:
+                raise ValueError("Can't use {} as wavenumber".format(value))
+
+    @property
+    def wavelength(self):
+        return self._wavelength
+
+    @wavelength.setter
+    def wavelength(self, value):
+        if isinstance(value, type(None)):
+            self._wavelength = slice(None)
+        elif isinstance(value, slice):
+            if value == slice(None):
+                self._wavelength = value
+            else:
+                self._wavelength = np.arange(value.start, value.stop, value.step)
+        else:
+            self._wavelength = np.array(value)
+            if len(self._wavelength.shape) != 1:
+                raise ValueError("Can't use {} as wavelength".format(value))
+
+    @property
+    def delay(self):
+        return self._delay
+
+    @delay.setter
+    def delay(self, value):
+        if isinstance(value, type(None)):
+            self._delay = slice(None)
+        elif isinstance(value, slice):
+            if value == slice(None):
+                self._delay = value
+            else:
+                self._delay = np.arange(value.start, value.stop, value.step)
+        else:
+            self._delay = np.array(value)
+            if len(self._delay.shape) != 1:
+                raise ValueError("Can't use {} as delay".format(value))
     @property
     def df(self):
         """Return a long form pandas dataframe."""
@@ -525,26 +606,80 @@ class Trace():
         df = pd.DataFrame(
             {key: getattr(self, key) for key in keys},
                ).melt(id_vars='pp_delay')
-        # This is a hack as I can't put lists into elements of dataframes.
-        df['pixel_start']=np.min(self.pixel)
-        df['pixel_stop']=np.max(self.pixel)
-        df['wavenumber_start']=np.min(self.wavenumber)
-        df['wavenumber_stop']=np.max(self.wavenumber)
-        df['cc_width']=self.cc_width
-        df['pump_freq']=self.pump_freq
-        df['pump_width']=self.pump_width
+        # Slice is only used for None input.
+        # Else this is a list of index values.
+        # This export removes information. I'm not happy with this.
+        if isinstance(self.pixel, slice):
+            df['pixel_start'] = None
+            df['pixel_stop'] = None
+        else:
+            df['pixel_start'] = np.min(self.pixel)
+            df['pixel_stop'] = np.max(self.pixel)
+
+        if isinstance(self.wavenumber, slice):
+            df['wavenumber_start'] = None
+            df['wavenumber_stop'] = None
+        else:
+            df['wavenumber_start'] = np.min(self.wavenumber)
+            df['wavenumber_stop'] = np.max(self.wavenumber)
+
+        if isinstance(self.wavelength, slice):
+            df['wavelength_start'] = None
+            df['wavelength_stop'] = None
+        else:
+            df['wavelength_start'] = np.min(self.wavelength)
+            df['wavelength_stop'] = np.max(self.wavelength)
+
+        df['cc_width'] = self.cc_width
+        df['pump_freq'] = self.pump_freq
+        df['pump_width'] = self.pump_width
         return df
 
-    def to_json(self, *args, **kwargs):
-        """Save spectrum to json with pd.Dataframe.to_json."""
-        self.df.to_json(*args, **kwargs)
+    @property
+    def dict(self):
+        d = {
+            "pp_delay": self.pp_delay.tolist(),
+            "bleach": self.bleach.tolist(),
+            "pump_freq": self.pump_freq,
+            "pump_width": self.pump_width,
+            "cc_width": self.cc_width,
+            "bleachE": self.bleachE.tolist(),
+        }
+        if isinstance(self.pixel, slice):
+            d['pixel'] = None
+        else:
+            d['pixel'] = self.pixel.tolist()
+        if isinstance(self.wavenumber, slice):
+            d['wavenumber'] = None
+        else:
+            d['wavenumber'] = self.wavenumber.tolist()
+        if isinstance(self.wavelength, slice):
+            d['wavelength'] = None
+        else:
+            d['wavelength'] = self.wavelength.tolist()
+        if isinstance(self.delay, slice):
+            d['delay'] = None
+        else:
+            d['delay'] = self.delay.tolist()
+        # Only None slice is allowed. Else it is a list
+        # of index values.
+        return d
 
-    # TODO: Must implement setter and getter for pixel and so on. Else with will become a mess
+    def to_json(self, fname):
+        """Save spectrum to json with dict to json."""
+        logging.info('Saving to: %s' % fname)
+        with open(fname, "w") as outfile:
+            json.dump(self.dict, outfile)
+
 
 def json_to_spectrum(*args, **kwargs):
     """Read Spectrum for json file."""
     df = pd.read_json(*args, **kwargs)
-    return Spectrum(intensity=df.intensity, baseline=df.baseline, norm=df.norm, wavenumber=df.wavenumber, intensityE=df.intensityE, pixel=df.pixel)
+    return Spectrum(
+        intensity=df.intensity, baseline=df.baseline, norm=df.norm,
+        wavenumber=df.wavenumber, intensityE=df.intensityE, pixel=df.pixel
+    )
+
 
 def _json_to_dict(*args, **kwargs):
     df = pd.read_json(*args, **kwargs)
@@ -560,9 +695,10 @@ def _json_to_dict(*args, **kwargs):
 
     # PandasDataframes transform to 2d arrays
     # but wavenumbers needs only one
-    data["wavenumber"]=data["wavenumber"][0]
-    data["pixel"]=data["pixel"][0]
+    data["wavenumber"] = data["wavenumber"][0]
+    data["pixel"] = data["pixel"][0]
     return data
+
 
 def json_to_pumpprobe(*args, **kwargs):
     """Read PumpProbe from json file.
@@ -579,6 +715,7 @@ def json_to_pumpprobe(*args, **kwargs):
         pp_delay=data["pp_delay"]
     )
 
+
 def json_to_bleach(*args, **kwargs):
     """Read PumpProbe from json file
     See pandas.read_json for information.
@@ -586,28 +723,8 @@ def json_to_bleach(*args, **kwargs):
     data = _json_to_dict(*args, **kwargs)
     return Bleach(**data)
 
-def json_to_trace(*args, **kwargs):
-    # implement a method to read df to trace
-    df = pd.read_json(*args, **kwargs)
-    data = {}
-    for name, group in df.groupby("variable"):
-        # Need to make a copy here to prevent error messages.
-        d = group.drop("variable", axis=1)
-        data[name] = d['value'].to_numpy()
-    #TODO: This is all super bad spagetty hacking but I don't have the time to
-    # think about it now. However the plan would be to have a data structure in
-    # the data frame that inherently matches to the traces data structure and
-    # all that manual parsing would not be needed.
 
-    # The metadata is just melted into the dataframe. Thus
-    # it makes no differenc witch value exactly we extract.
-    # only one is allowed anyway
-    for key in ('cc_width', 'pump_freq', 'pump_width'):
-        v = group[key].iloc[0]
-        if pd.isna(v):
-            data[key] = None
-    data['pixel'] = (group['pixel_start'].iloc[0], group['pixel_stop'].iloc[0])
-    data['wavenumber'] = (group['wavenumber_start'].iloc[0], group['wavenumber_stop'].iloc[0])
-    data['pp_delay'] = group['pp_delay']
-
+def json_to_trace(fname):
+    with open(fname) as f:
+        data = json.load(f)
     return Trace(**data)
