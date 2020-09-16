@@ -9,8 +9,9 @@ class SelectorPP:
         Helps to deal with the correct slicing of the 4D PumpProbe data read of
         by `pysfg.read.victor.data_file`. The advantage of this class is, that
         one doesn't need to pass all axis selections in the correct order each
-        time. Instead the class returns them always in the correct order. Not that only integers or
-        slices are allowed. Index indexing like [1 ,2, 4, 7] would fail.
+        time. Instead the class returns them always in the correct order. Not
+        that only integers or slices are allowed. Index indexing like
+        [1 ,2, 4, 7] fails.
 
         Example:
         ```
@@ -18,7 +19,7 @@ class SelectorPP:
         # Traditional slicing:
         data['data'][:, :, 0, 400: 1200]
         # The same with this class:
-        data['data'][SelectorPP(spectra=0, pixel=slice(400, 1200)).select]
+        data['data'][SelectorPP(spectra=0, pixel=slice(400, 1200)).tselect]
         # While this method is more verbose, it makes clear, and easier to
         # understand that we want spectrum 0 and pixel 400 to 1200. While
         # we want all pp_delays and scans.
