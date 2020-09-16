@@ -5,7 +5,11 @@ import unittest
 import numpy as np
 import pysfg
 from scipy.stats import norm as gaussian
+import os
+from pathlib import Path
 
+path = os.path.abspath(__file__)
+dir_path = Path(os.path.dirname(path))
 
 class TestSpectrum(unittest.TestCase):
     pixel = np.arange(1, 1600)
@@ -25,8 +29,9 @@ class TestSpectrum(unittest.TestCase):
         self.assertEqual(np.all(self.sp.normalized == (self.intensity - 1)/self.norm), True)
 
     def test_to_and_from_json(self):
-        self.sp.to_json("spectrum.json")
-        ssp = pysfg.json_to_spectrum("./results/spectrum.json")
+        os.chdir(dir_path)
+        self.sp.to_json(Path("spectrum.json"))
+        ssp = pysfg.json_to_spectrum(Path("results/spectrum.json"))
         # There is some numerical uncertainty
         self.assertEqual(np.all(self.sp.normalized - ssp.normalized < 0.0001), True)
 
@@ -57,8 +62,9 @@ class TestPumpProbe(unittest.TestCase):
         self.assertTrue(np.all(self.pp.normalized == (self.intensity - 1)/self.norm))
 
     def test_to_and_from_json(self):
-        self.pp.to_json("pumpprobe.json")
-        ppp = pysfg.json_to_pumpprobe("./results/pumpprobe.json")
+        os.chdir(dir_path)
+        self.pp.to_json(Path("pumpprobe.json"))
+        ppp = pysfg.json_to_pumpprobe(Path("results/pumpprobe.json"))
         self.assertTrue(np.all(self.pp.normalized - ppp.normalized < 0.0001))
 
     def test_PumpProbe_baseline_0(self):
@@ -149,8 +155,9 @@ class TestBleach(unittest.TestCase):
         self.assertEqual(tr.bleach.mean(), 0.005120605673482265)
 
     def test_to_and_from_json(self):
-        self.bleach.to_json("bleach.json")
-        bleach = pysfg.spectrum.json_to_bleach("./results/bleach.json")
+        os.chdir(dir_path)
+        self.bleach.to_json(Path("bleach.json"))
+        bleach = pysfg.spectrum.json_to_bleach(Path("results/bleach.json"))
         self.assertTrue(np.all(bleach.intensity - self.bleach.intensity < 0.0001))
 
 
@@ -171,8 +178,9 @@ class TestTrace(unittest.TestCase):
     )
 
     def test_to_and_from_json(self):
-        self.trace.to_json("trace.json")
-        tr = pysfg.spectrum.json_to_trace("./results/trace.json")
+        os.chdir(dir_path)
+        self.trace.to_json(Path("trace.json"))
+        tr = pysfg.spectrum.json_to_trace(Path("results/trace.json"))
         self.assertAlmostEqual(self.trace.bleach.mean(), tr.bleach.mean())
 
 
