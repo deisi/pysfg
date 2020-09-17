@@ -7,30 +7,44 @@ A toolkit to help analysing pump probe sfg data.
 - Install Anaconda for python3 64Bit
 
 - Setup automatic kernel generation
-  `conda install nb_conda_kernels`
+  example: `conda install nb_conda_kernels`
 
 - Download code
   
-   `git clone https://github.com/deisi/pysfg.git`
+  example: `git clone https://github.com/deisi/pysfg.git`
 
 - Navigate to the folder where this `reademe.md` file is located
   
-   `cd pysfg`
+  example: `cd pysfg`
 
-- Setup a conda environment with:
-  `conda env create -f environment.yml`
+- Setup a conda environment
+  example: `conda env create -f environment.yml`
 
 - If you haven't set up the automatic kernel generation above you now need to do it manually with:
   
   - Activate the environment with:
-    `conda activate sfg`
+    exmple: `conda activate sfg`
   - Add a kernel to the default jupyterlab environment
-    `ipython kernel install --user --name=sfg`
+    example: `ipython kernel install --user --name=sfg`
 
-## Structure
+## Folders
 
-The package has two parts. Within the `./pysfg` folder you find the under the hood code of the module. If you want it is the backend of the whole thing. Within the `./tests` folder you find some test functions but they need to be rewritten, so don't bother about this right now. The `./scripts` folder contains a few set of stand alone scripts, that use the code of `pysfg` to automate common analysis steps we do after a pump probe experiment.  Within the`./tutorial` folder, there are some example configurations for the scripts of the `./scripts` folder and specifically the the `Tutorial.ipynb` tries to show how to use the scripts and how to configure them.
+- `pysfg`
+  
+  Tha place of the backend code. This is where data classes, there input and output is defined.
+
+- `scripts`
+  
+  A collection of user ready scripts. The scripts is what you as the user want to work with. Each script takes a specific `configuration.yaml` file as input and generates time results in the form of `.json` files. These `.json` files can then be used to further data processing.
+
+- `tests`
+  
+  A folder with a bunch of unittests. Before codechanges are commited. One has to run: `python -m unittests discover -s tests` and pass all tests.
+
+- `tutorial`
+  
+  This folder contains a tutorial in the form of a  [jupyter lab notebook](https://jupyterlab.readthedocs.io/en/stable/). The [tutorial/Tutorial.ipynb](https://github.com/deisi/pysfg/blob/master/tutorial/Tutorial.ipynb) notebook explains how to run and configure the scripts The `.yaml` files in tutorial can be seen as a reference implementation.
 
 # Usage
 
-Have a look at [./tutorial/Tutorial.ipynb](https://github.com/deisi/pysfg/blob/master/tutorial/Tutorial.ipynb).
+Have a look at [./tutorial/Tutorial.ipynb](https://github.com/deisi/pysfg/blob/master/tutorial/Tutorial.ipynb), the configuration files in `tutorial` and maybe even browse through the `scripts`. This should give you an idear of how this should be used.
