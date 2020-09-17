@@ -9,17 +9,17 @@ import numpy as np
 import IPython.display as ipd
 
 
-def run(config):
+def run(config, config_path):
     logging.debug(config)
-    fpath = Path(config['trace_data'])
+    fpath = config_path / Path(config['trace_data'])
     roi = slice(*config.get('roi', [None]))
     roi_pp_delay = config.get('roi_pp_delay')
     pp_delay_scale = config.get('pp_delay_scale', 1)
     bleach_scale = config.get('bleach_scale', 1)
-    out = Path(config['out'])
+    out = config_path / Path(config['out'])
     kwargs = config.get('kwargs', {})
     tr = pysfg.json_to_trace(fpath)
-    logging.info('Running {}'.format(fpath))
+    logging.info('Running %s' % fpath)
 
     if roi_pp_delay:
         roi_pp_delay = slice(*roi_pp_delay)
@@ -57,13 +57,15 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    fname = Path(args.config)
+    config_path = fname.parent
     with open(args.config) as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python in the dictionary format
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     for data_config in config['data']:
-        run(data_config)
+        run(data_config, config_path)
 
 
 if __name__ == "__main__":

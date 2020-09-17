@@ -8,15 +8,15 @@ import pysfg
 import numpy as np
 
 
-def run(config):
+def run(config, config_path):
     logging.debug(config)
     # Read config
-    pumped_data = pysfg.spectrum.json_to_pumpprobe(Path(config["pumped_data"]))
-    probed_data = pysfg.spectrum.json_to_pumpprobe(Path(config["probed_data"]))
+    pumped_data = pysfg.spectrum.json_to_pumpprobe(config_path / Path(config["pumped_data"]))
+    probed_data = pysfg.spectrum.json_to_pumpprobe(config_path / Path(config["probed_data"]))
     mode = config.get('mode', 'difference')
     static_difference_correction = config.get('static_difference_correction', False)
     heat_correction = config.get('heat_correction', False)
-    out = Path(config['out'])
+    out = config_path / Path(config['out'])
 
     # This generates a `pysfg.Bleach` object.
     if mode == "difference":
@@ -26,7 +26,7 @@ def run(config):
         logging.info('Run ratio mode')
         # By removing 1 here, the subsequent heat and static_difference_corrections work
         # correctly. At the end. we add the 1 again.
-        bleach = probed_data / pumped_data 
+        bleach = probed_data / pumped_data
         bleach.normalized -= 1
     else:
         raise ValueError('Cant understand given mode')
@@ -65,13 +65,15 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    fname = Path(args.config)
+    config_path = fname.parent
     with open(args.config) as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     for data_config in config['data']:
-        run(data_config)
+        run(data_config, config_path)
 
 
 if __name__ == "__main__":

@@ -9,10 +9,10 @@ import yaml
 from scipy.stats import sem
 
 
-def run(config):
+def run(config, config_path):
     logging.debug(config)
     # Read config
-    intensity_data = Path(config['intensity_data'])
+    intensity_data = config_path / Path(config['intensity_data'])
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
     intensity_filter = config.get('intensity_filter', None)
     drift_correction_params = config.get("drift_correction_params")
@@ -21,7 +21,7 @@ def run(config):
     background_selector.pixel = intensity_selector.pixel
     norm_data = config.get('norm_data')
     calibration_config = config.get('calibration', {})
-    out = Path(config['out'])
+    out = config_path / Path(config['out'])
     pump_freq = config.get('pump_freq')
     pump_width = config.get('pump_width')
     cc_width = config.get('cc_width')
@@ -35,7 +35,7 @@ def run(config):
 
     # background can be a path, number or None.
     if isinstance(background_data, str):
-        background_data = pysfg.read.victor.data_file(Path(background_data))
+        background_data = pysfg.read.victor.data_file(config_path / Path(background_data))
         background_data_selected = background_data['data'][background_selector.tselect]
     elif background_data:
         background_data_selected = background_data * np.ones_like(intensity_data_selected)
@@ -89,7 +89,7 @@ def run(config):
 
     norm = None
     if norm_data:
-        norm = pysfg.spectrum.json_to_spectrum(Path(norm_data)).basesubed
+        norm = pysfg.spectrum.json_to_spectrum(config_path / Path(norm_data)).basesubed
         if len(norm) != np.shape(intensity)[-1]:
             norm = norm[intensity_selector.pixel]
 
@@ -125,7 +125,9 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-    with open(args.config) as file:
+    fname = Path(args.config)
+    config_path = fname.parent
+    with open(fname) as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
         config = yaml.load(file, Loader=yaml.FullLoader)
@@ -143,7 +145,7 @@ def main():
         data_config['pump_freq'] =  data_config.get('pump_freq', pump_freq)
         data_config['pump_width'] = data_config.get('pump_width', pump_width)
         data_config['cc_width'] =  data_config.get('cc_width', cc_width)
-        run(data_config)
+        run(data_config, config_path)
 
 
 if __name__ == "__main__":

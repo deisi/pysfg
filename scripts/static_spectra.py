@@ -89,22 +89,23 @@ def make_spectrum(
         pixel=data_select.pixel,
     )
 
-def run(config):
+def run(config, config_path):
     """This is run per top level element of the config.yaml file."""
     logging.debug(config)
     # Read config
-    intensity_data = Path(config['intensity_data'])
+    intensity_data = config_path / Path(config['intensity_data'])
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
-    background_data = Path(config['background_data'])
+    background_data = config_path / Path(config['background_data'])
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
-    norm_data = config.get('norm_data')
+    norm_data =  config.get('norm_data')
     calibration_config = config.get('calibration', {})
-    out = Path(config['out'])
+    out = config_path / Path(config['out'])
 
     # Sanetize config
     background_selector.pixel = intensity_selector.pixel
     if norm_data:
-        norm_data = pysfg.spectrum.json_to_spectrum(Path(norm_data))
+        norm_data = config_path / Path(norm_data)
+        norm_data = pysfg.spectrum.json_to_spectrum(norm_data)
 
 
     # Import Data
@@ -153,7 +154,9 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-    with open(args.config) as file:
+    fname = Path(args.config)
+    config_path = fname.parent
+    with open(fname) as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
         config = yaml.load(file, Loader=yaml.FullLoader)
@@ -165,7 +168,7 @@ def main():
         # Combine local and global calibration parameters.
         data_config_calibration = dict(data_config.get('calibration', {}))
         data_config['calibration'] =  {**calibration_config, **data_config_calibration}
-        run(data_config)
+        run(data_config, config_path)
 
 
 if __name__ == "__main__":

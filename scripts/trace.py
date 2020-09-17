@@ -8,12 +8,12 @@ import pysfg
 import numpy as np
 
 
-def run(config):
+def run(config, config_path):
     logging.debug(config)
-    bleach_data = pysfg.spectrum.json_to_bleach(Path(config["bleach_data"]))
+    bleach_data = pysfg.spectrum.json_to_bleach(config_path / Path(config["bleach_data"]))
     traces_config = config.get('traces')
     for trace_config_block in traces_config:
-        out = Path(trace_config_block['out'])
+        out = config_path / Path(trace_config_block['out'])
         pixel = slice(*trace_config_block.get('pixel', [None]))
         wavenumber = trace_config_block.get('wavenumber')
         if wavenumber:
@@ -41,13 +41,15 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    fname = Path(args.config)
+    config_path = fname.parent
     with open(args.config) as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     for data_config in config['data']:
-        run(data_config)
+        run(data_config, config_path)
 
 
 if __name__ == "__main__":
