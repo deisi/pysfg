@@ -16,123 +16,85 @@ import logging
 import argparse
 from scipy.stats import sem
 
-def make_spectrum(
-        data,
-        background_data=None,
-        norm=None,
-        data_select=pysfg.SelectorPP(spectra=0),
-        background_select=pysfg.SelectorPP(spectra=0),
-        calibration=None
-):
-    """Make Spectrum object from static SFG measurment.
-
-    data: data dict. A 4D numpy array with the keyword 'data' is expected.
-    background: data dict with background data. Same format as above.
-    norm: pysfg.Spectrum, for normalization or array or integer
-    data_select: pysfg.SelctorPP object.
-    background_select: pysfg.SelectorPP object
-    calibration: `pysfg.Calibration` object. if none given, the calibration
-      is infered from the data. However this only works for victor data, as that
-      is the only setup as of right now, that correctly exports all required information.
-
-    Returns `pysfg.Spectrum` objecth
-    """
-
-    if not isinstance(data, dict):
-        raise TypeError('data must be of type dict')
-    try:
-        data['data']
-    except:
-        raise ValueError("data dict must contain keyword 'data'")
-
-    if not isinstance(norm, type(None)) and not isinstance(norm, pysfg.spectrum.Spectrum):
-        raise TypeError('Cant use norm type of {}, {}'.format(type(norm), norm))
-
-    # Handle various background data inputs
-    if isinstance(background_data, dict):
-        baseline = np.median(
-            background_data['data'][background_select.tselect],
-            axis=(0, 1)
-        )
-    elif isinstance(background_data, pysfg.Spectrum):
-        baseline = background_data.intensity
-    # Spectrum can handle the input or will fail
-    else:
-        baseline = background_data
-
-    intensity = np.median(
-        data['data'][data_select.tselect],
-        axis=(0, 1) # Median over pp_delay and scans
-    )
-
-    intensityE = sem(
-        np.median(data['data'][data_select.tselect], axis=0),
-        axis=(0) # Median over pp_delay sem over scans.
-    )
-
-    if isinstance(calibration, type(None)):
-        calibration = pysfg.Calibration(
-            data['central_wl'], data['vis_wl'], data['calib_central_wl'], data['calib_coeff']
-        )
-    wavenumber = calibration.wavenumber[data_select.pixel]
-
-    if isinstance(norm, pysfg.spectrum.Spectrum):
-        if len(norm.basesubed) != len(intensity):
-            norm = norm.basesubed[data_select.pixel]
-
-    return pysfg.Spectrum(
-        intensity=intensity,
-        baseline=baseline,
-        norm=norm,
-        wavenumber=wavenumber,
-        intensityE=intensityE,
-        pixel=data_select.pixel,
-    )
 
 def run(config, config_path):
-    """This is run per top level element of the config.yaml file."""
     logging.debug(config)
+
     # Read config
     intensity_data = config_path / Path(config['intensity_data'])
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
-    background_data = config_path / Path(config['background_data'])
+    background_data = config.get('background_data')
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
     norm_data =  config.get('norm_data')
     calibration_config = config.get('calibration', {})
     out = config_path / Path(config['out'])
 
-    # Sanetize config
-    background_selector.pixel = intensity_selector.pixel
-    if norm_data:
-        norm_data = config_path / Path(norm_data)
-        norm_data = pysfg.spectrum.json_to_spectrum(norm_data)
-
+    # Shape is unexpected if no spectrum is selected
+    if intensity_selector.spectra == slice(None):
+        intensity_selector.spectra = 0
+    if background_selector.spectra == slice(None):
+        background_selector.spectra = 0
 
     # Import Data
     logging.info('Importing: {}'.format(intensity_data))
     intensity_data = pysfg.read.victor.data_file(intensity_data)
-    background_data = pysfg.read.victor.data_file(background_data)
+    intensity_data_selected = intensity_data['data'][intensity_selector.tselect]
+    logging.info('Using data_select is: \n%s' % intensity_selector)
 
-    # Get calibration. Not passed vales are read from datafile.
+    # This allows to pass norm as path to a norm spectrum in json format,
+    # to leave it empty or to pass an array.
+    if not isinstance(norm_data, type(None)):
+        if isinstance(norm_data, str):
+            norm_data = config_path / Path(norm_data)
+            norm_data = pysfg.spectrum.json_to_spectrum(norm_data)
+            norm_data = norm_data.basesubed
+        try:
+            norm_data * np.ones_like(intensity_data_selected)
+        except ValueError:
+            norm_data = norm_data[intensity_selector.pixel]
+        norm_data = norm_data * np.ones_like(intensity_data_selected)
+        norm_data = np.median(norm_data, axis=(0, 1))
+
+    # This allows to pass background data as number or as path to data file, or to leave it empty
+    if not isinstance(background_data, type(None)):
+        if isinstance(background_data, str):
+            background_data = config_path / Path(background_data)
+            background_data = pysfg.read.victor.data_file(background_data)
+            background_selector.pixel = intensity_selector.pixel
+            background_data = background_data['data'][background_selector.tselect]
+        else:
+            background_data = background_data * np.ones_like(intensity_data_selected)
+        background_data = np.median(background_data, axis=(0, 1))
+
+    # Calibration is either read of data file, or configuration.
     calibration = pysfg.Calibration(
         calibration_config.get('central_wl', intensity_data['central_wl']),
         calibration_config.get('vis_wl', intensity_data['vis_wl']),
         calibration_config.get('calib_central_wl', intensity_data['calib_central_wl']),
         calibration_config.get('calib_coeff', intensity_data['calib_coeff'])
     )
+    wavenumber = calibration.wavenumber[intensity_selector.pixel]
+    logging.info('Using Calibration with: \n%s' % calibration)
 
-    logging.info('Using data_select is:\n{}'.format(intensity_selector))
-    logging.info('Using Calibration with:\n{}'.format(calibration))
 
-    # Make a general spectrum object
-    spectrum = make_spectrum(
-        data=intensity_data,
-        background_data=background_data,
+    intensity = np.median(
+        intensity_data_selected,
+        axis=(0, 1)  # Median over pp_delay and scans
+    )
+
+    intensityE = sem(
+        np.median(intensity_data_selected, axis=0),
+        axis=(0)  # Median over pp_delay standard error of the mean over scans.
+    )
+
+    spectrum = pysfg.Spectrum(
+        intensity=intensity,
+        baseline=background_data,
         norm=norm_data,
-        data_select=intensity_selector,
-        background_select=background_selector,
-        calibration=calibration,
-       )
+        wavenumber=wavenumber,
+        intensityE=intensityE,
+        pixel=intensity_selector.pixel,
+    )
 
     # Save results
     spectrum.to_json(out)

@@ -26,6 +26,12 @@ def run(config, config_path):
     pump_width = config.get('pump_width')
     cc_width = config.get('cc_width')
 
+
+    # Shape is unexpected if no spectrum is selected
+    if intensity_selector.spectra == slice(None):
+        intensity_selector.spectra = 0
+    if background_selector.spectra == slice(None):
+        background_selector.spectra = 0
     # Import Data and get its structure
     logging.info('****New Config****')
     logging.info('Importing: %s', intensity_data)
@@ -40,7 +46,7 @@ def run(config, config_path):
     elif background_data:
         background_data_selected = background_data * np.ones_like(intensity_data_selected)
     else:
-        background_data_selected = np.zeros(intensity_data_selected)
+        background_data_selected = np.zeros_like(intensity_data_selected)
     baseline = np.median(
         background_data_selected,
         axis=(1)
