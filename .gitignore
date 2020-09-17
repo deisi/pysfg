@@ -8,3 +8,4 @@
 .#*
 flycheck_*
 /tests/*.json
+/tests/plot.pdf

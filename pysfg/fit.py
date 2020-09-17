@@ -11,13 +11,14 @@ from scipy.special import erf, erfc
 from scipy.stats import norm
 from iminuit import Minuit, describe
 from iminuit.util import make_func_code
+from pathlib import Path
 
 
 def from_json(fname):
     """Import from json serialized version. fname is a string with a path
     to where to read the file from.
     """
-    with open(fname) as json_file:
+    with open(Path(fname)) as json_file:
         d = json.load(json_file)
 
     thismodule = sys.modules[__name__]
@@ -87,7 +88,7 @@ class FitBase():
         where to save the serialized json object.
         """
         logging.info('Saving to: %s' % fname)
-        with open(fname, 'w') as outfile:
+        with open(Path(fname), 'w') as outfile:
             json.dump(self.dict, outfile, indent=2)
 
 

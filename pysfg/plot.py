@@ -2,6 +2,8 @@
 
 from os import path
 import matplotlib.pyplot as plt
+from pathlib import Path
+import logging
 
 
 def figures2pdf(fname, figures, close=False):
@@ -12,22 +14,21 @@ def figures2pdf(fname, figures, close=False):
       - ++figures**: List of figures to use
       - **close**: Close the figures after using
     """
-    fname = str(fname)
+    fname = Path(fname)
     figures = list(figures)
     close = bool(close)
 
     from matplotlib.backends.backend_pdf import PdfPages
-    if fname[-4:] != '.pdf':
-        fname += '.pdf'
+    if fname.suffix != ".pdf":
+        fname = fname.with_suffix(".pdf")
 
-    print('Saving to:', path.abspath(fname))
+    logging.info('Saving to: %s' % fname)
 
     with PdfPages(fname) as pdf:
         for fig in figures:
             pdf.savefig(fig)
             if close:
                 plt.close(fig)
-    print('DONE')
 
 def errorline(xdata, ydata, yerr, kwargs_plot=None, kwargs_filllines=None):
     """Function to  plot lines with surrounding error lines.

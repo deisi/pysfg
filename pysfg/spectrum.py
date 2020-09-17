@@ -668,7 +668,7 @@ class Trace():
     def to_json(self, fname):
         """Save spectrum to json with dict to json."""
         logging.info('Saving to: %s' % fname)
-        with open(fname, "w") as outfile:
+        with open(Path(fname), "w") as outfile:
             json.dump(self.dict, outfile)
 
 
@@ -725,6 +725,6 @@ def json_to_bleach(*args, **kwargs):
 
 
 def json_to_trace(fname):
-    with open(fname) as f:
+    with open(Path(fname)) as f:
         data = json.load(f)
     return Trace(**data)
