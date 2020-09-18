@@ -34,8 +34,13 @@ def run(config, config_path):
         background_selector.spectra = 0
 
     # Import Data
-    logging.info('Importing: {}'.format(intensity_data))
-    intensity_data = pysfg.read.victor.data_file(intensity_data)
+    logging.info('Importing: %s' % intensity_data)
+    if intensity_data.suffix == ".dat":
+        intensity_data = pysfg.read.victor.data_file(intensity_data)
+    elif intensity_data.suffix == ".spe":
+        intensity_data = pysfg.read.spe.data_file(intensity_data)
+    else:
+        raise ValueError("Can't import %s with suffix %s" % (intensity_data, intensity_data.suffix))
     intensity_data_selected = intensity_data['data'][intensity_selector.tselect]
     logging.info('Using data_select is: \n%s' % intensity_selector)
 
@@ -64,15 +69,25 @@ def run(config, config_path):
             background_data = background_data * np.ones_like(intensity_data_selected)
         background_data = np.median(background_data, axis=(0, 1))
 
-    # Calibration is either read of data file, or configuration.
-    calibration = pysfg.Calibration(
-        calibration_config.get('central_wl', intensity_data['central_wl']),
-        calibration_config.get('vis_wl', intensity_data['vis_wl']),
-        calibration_config.get('calib_central_wl', intensity_data['calib_central_wl']),
-        calibration_config.get('calib_coeff', intensity_data['calib_coeff'])
-    )
-    wavenumber = calibration.wavenumber[intensity_selector.pixel]
-    logging.info('Using Calibration with: \n%s' % calibration)
+    # For spe files use build in calibration
+    wavelength = intensity_data.get('wavelength')
+    if not isinstance(wavelength, type(None)):
+        logging.info('Use wavelength of data file to calculate wavenumber.')
+        wavenumber = pysfg.calibration.Calibration2(
+            vis_wl=calibration_config['vis_wl'],
+            wavelength=wavelength
+        ).wavenumber[intensity_selector.pixel]
+        if calibration_config.get('central_wl') or calibration_config.get('calib_central_wl') or calibration_config.get('calib_coeff'):
+            raise NotImplementedError('Calibration not fully implemented for .spe files')
+    else:
+        calibration = pysfg.Calibration(
+            calibration_config.get('central_wl', intensity_data['central_wl']),
+            calibration_config.get('vis_wl', intensity_data['vis_wl']),
+            calibration_config.get('calib_central_wl', intensity_data['calib_central_wl']),
+            calibration_config.get('calib_coeff', intensity_data['calib_coeff'])
+        )
+        wavenumber = calibration.wavenumber[intensity_selector.pixel]
+        logging.info('Using Calibration with: \n%s' % calibration)
 
 
     intensity = np.median(
@@ -127,7 +142,7 @@ def main():
     for data_config in config['data']:
         # Combine local and global calibration parameters.
         data_config_calibration = dict(data_config.get('calibration', {}))
-        data_config['calibration'] =  {**calibration_config, **data_config_calibration}
+        data_config['calibration'] = {**calibration_config, **data_config_calibration}
         run(data_config, config_path)
 
 

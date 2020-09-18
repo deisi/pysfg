@@ -55,6 +55,29 @@ class Calibration:
         return str
 
 
+class Calibration2:
+    def __init__(self, vis_wl, wavelength):
+        """Calibrate with a given list of wavelength and the visible wavelength """
+        self.vis_wl = float(vis_wl)
+        self.wavelength = np.array(wavelength)
+
+    @property
+    def frequency(self):
+        """Frequency of the signal in wavenumbers. This is before vis subtraction."""
+
+        # 10**7 is the translation factor for wavelength in nm to wavenumber in 1/cm
+        return 10**7/self.wavelength
+
+    @property
+    def wavenumber(self):
+        """The spectral wavenumber in 1/cm after subtraction of the upconversion."""
+
+        # As the calibration is not that precise anyways,
+        # rounding on 2 digits is more than enough
+        return np.round(10**7/(1/(1/self.wavelength - 1/self.vis_wl)), 2)
+
+
+
 def from_victor_header(header):
     """Returns Victor calibration class object by reading a victor data header.
 

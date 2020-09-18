@@ -8,6 +8,7 @@ requirements = [
     'ipython',
     'iminuit',
     'pyaml',
+    'xmltodict'
 ]
 
 setuptools.setup(

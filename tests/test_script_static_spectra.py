@@ -65,6 +65,54 @@ class TestScriptStaticSpectra(unittest.TestCase):
         }
         script.run(config, self.config_path)
 
+    def test_spe0(self):
+        config = {
+            "intensity_data": "./data/quatz.spe",
+            "background_data": 600,
+            "out": "./results/quartz_spe.json",
+            'calibration': {'vis_wl': 800},
+        }
+        script.run(config, self.config_path)
+
+    def test_spe1(self):
+        config = {
+            "intensity_data": "./data/sample.spe",
+            "background_data": 600,
+            "out": "./results/sample_spe.json",
+            "norm_data": "./results/quartz_spe.json",
+            "intensity_selector": {"pixel": [600, 1200]},
+            'calibration': {'vis_wl': 800},
+        }
+        script.run(config, self.config_path)
+
+    def test_spe2(self):
+        sp = pysfg.json_to_spectrum("./results/sample_spe.json")
+        self.assertEqual(sp.wavenumber.mean(), 2574.93155)
+
+    def test_spe3(self):
+        sp = pysfg.json_to_spectrum("./results/sample_spe.json")
+        self.assertEqual(sp.basesubed.mean(), 100.25333333333333)
+
+    def test_spe4(self):
+        sp = pysfg.json_to_spectrum("./results/sample_spe.json")
+        self.assertEqual(sp.normalized.mean(), 0.14295257054703953)
+
+    def test_spe5(self):
+        config = {
+            "intensity_data": "./data/quartz_v2.spe",
+            "background_data": 590,
+            "out": "./results/quartz_v2_spe.json",
+            'calibration': {'vis_wl': 800},
+        }
+        script.run(config, self.config_path)
+
+    def test_spe6(self):
+        sp = pysfg.json_to_spectrum("./results/quartz_v2_spe.json")
+        self.assertEqual(sp.basesubed.mean(), 1647.569375)
+
+    def test_spe7(self):
+        sp = pysfg.json_to_spectrum("./results/quartz_v2_spe.json")
+        self.assertEqual(sp.wavenumber.mean(), 1796.63680625)
 
 if __name__ == '__main__':
     unittest.main()

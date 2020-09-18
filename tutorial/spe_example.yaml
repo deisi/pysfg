@@ -1,0 +1,17 @@
+# Only static_spectra script knows how to handle spe files.
+calibration:
+  vis_wl: 800  # This can not be known from an spe file. Thus it must be passed here.
+data:
+  - intensity_data:  "../tests/data/gold.spe"
+    background_data: 600
+    out: "./cache/gold_spe.json"
+  - intensity_data:  "../tests/data/quatz.spe"
+    background_data: 600
+    out: "./cache/quartz_spe.json"
+  - intensity_data:  "../tests/data/sample.spe"
+    background_data: 600
+    intensity_selector:
+      pixel: [600, 1200]
+    norm_data: "./cache/quartz_spe.json"
+    out: "./cache/sample_spe.json"
+
