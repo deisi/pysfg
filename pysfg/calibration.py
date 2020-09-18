@@ -1,6 +1,7 @@
 """Calibration related module"""
 
 import numpy as np
+from . import read
 
 class Calibration:
     def __init__(self, central_wl, vis_wl, calib_central_wl, calib_coeff, numberOfPixel=1600):
@@ -77,7 +78,6 @@ def from_victor_file(fpath):
     wavenumber can be obtained by calling .wavenumber on the output.
 
     """
-    from . import read
     header = read.victor.header(fpath)
     return from_victor_header(header)
 
@@ -99,7 +99,6 @@ def from_victor_file_wavenumber(fpath):
 # These calibration coefficients were obtained by Simon, but they
 # are not saved within the Program, thus I append them here.
 def from_vivian_file(fpath, calib_central_wl=680, calib_coeff=[0.080881, 615.18]):
-    from . import read
     header = read.victor.header(fpath)
     calib = Calibration(
         header['central_wl'],

@@ -1,6 +1,5 @@
 """Functions related to figures."""
 
-from os import path
 import matplotlib.pyplot as plt
 from pathlib import Path
 import logging

@@ -1,22 +1,20 @@
-"""Module to deal with SFG Spectral Data"""
-# TODO: All classes lack a method of dealing with uncertainties
-#       - I added handling of intensity errors. This is the first order
-#          effect and thus the most important one.
-# TODO: There are some not implemented cases left that are nice to haves.
+"""Data classes for spectroscopic SFG data"""
 
-from pathlib import Path
-from scipy.ndimage import gaussian_filter1d
-import numpy as np
-import pandas as pd
 import logging
 import json
+from pathlib import Path
+import numpy as np
+import pandas as pd
+from scipy.ndimage import gaussian_filter1d
 
 
 class BaseSpectrum():
     """Abstract base class for spectral data classes."""
     def __init__(
-            self, intensity, baseline=None, norm=None, wavenumber=None, intensityE=None, pixel=None
+            self, intensity, baseline=None, norm=None, wavenumber=None,
+            intensityE=None, pixel=None
     ):
+        self._intensity = None
         self.intensity = intensity
         self.baseline = baseline
         self.norm = norm
@@ -39,7 +37,7 @@ class BaseSpectrum():
         if isinstance(intensityE, type(None)):
             logging.warning("Warning. Using default error estimation of 10%")
             intensityE = self.intensity*0.1
-        elif isinstance(intensityE, float) or isinstance(intensityE, int):
+        elif isinstance(intensityE, (float, int)):
             intensityE = self.intensity*intensityE
         if np.shape(intensityE) != self.shape:
             raise ValueError('Shape of intensityE and intensity must match')
@@ -87,7 +85,7 @@ class BaseSpectrum():
 
     @property
     def basesubedE(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def normalized(self):
@@ -136,7 +134,7 @@ class BaseSpectrum():
     @property
     def df(self):
         """Return a pandas dataframe."""
-        raise NotImplemented
+        raise NotImplementedError
 
     def to_json(self, *args, **kwargs):
         """Save spectrum to json with pd.Dataframe.to_json."""
@@ -150,7 +148,8 @@ class BaseSpectrum():
 
 
 class Spectrum(BaseSpectrum):
-    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None, intensityE=None, pixel=None):
+    def __init__(self, intensity, baseline=None, norm=None, wavenumber=None,
+                 intensityE=None, pixel=None):
         """1D SFG Spectrum
 
         Class to encapsulate Static SFG data. Pass intensity, baseline, norm
@@ -170,7 +169,7 @@ class Spectrum(BaseSpectrum):
         """
         super().__init__(intensity, baseline, norm, wavenumber, intensityE, pixel)
 
-    # intensity property cant be inherited from BaseSpectrum for some reason I forgot
+    ## For unknown reasons this cant be inhereted from BaseSpectrum
     @property
     def intensity(self):
         """Intensity values of the spectrum. Must be a 1D array"""
@@ -204,7 +203,7 @@ class Spectrum(BaseSpectrum):
         columns = ('intensity', 'baseline', 'norm', 'wavenumber', 'pixel', 'intensityE')
         return pd.DataFrame(
             np.transpose([getattr(self, name) for name in columns]),
-            columns = columns
+            columns=columns
         )
 
 
@@ -261,7 +260,7 @@ class PumpProbe(BaseSpectrum):
     @pp_delay.setter
     def pp_delay(self, pp_delay):
         if isinstance(pp_delay, type(None)):
-            pp_delay = np.arange(np.shape[0])
+            pp_delay = np.arange(self.shape[0])
         elif not len(pp_delay) == self.shape[0] or len(np.shape(pp_delay)) != 1:
             raise ValueError('Len of pp_delay must match shape of intensity.')
         self._pp_delay = pp_delay
@@ -294,7 +293,7 @@ class PumpProbe(BaseSpectrum):
     @property
     def df(self):
         """Return a long form pandas dataframe."""
-        # TODO andd pump_width, pump_pos and cc_width.
+        #  TODO andd pump_width, pump_pos and cc_width.
         dfs = []
         for key in ('intensity', 'baseline', 'norm', 'basesubed', 'normalized', 'intensityE', 'normalizedE'):
             df = pd.DataFrame(
@@ -323,10 +322,9 @@ class PumpProbe(BaseSpectrum):
     def __sub__(self, other):
         """Returns a dictionary with all the important pump-probe data."""
         if not np.all(self.wavenumber == other.wavenumber):
-            raise NotImplemented
+            raise NotImplementedError
         if not np.all(self.pp_delay == other.pp_delay):
-            raise NotImplemented
-
+            raise NotImplementedError
 
         # This corrects for static differences in pumped and probed
         return Bleach(
@@ -345,9 +343,9 @@ class PumpProbe(BaseSpectrum):
     def __truediv__(self, other):
         """Returns a dictionary with all the important pump-probe data."""
         if not np.all(self.wavenumber == other.wavenumber):
-            raise NotImplemented
+            raise NotImplementedError
         if not np.all(self.pp_delay == other.pp_delay):
-            raise NotImplemented
+            raise NotImplementedError
         return Bleach(
             intensity=self.intensity / other.intensity,
             baseline=self.baseline / other.baseline,
@@ -407,7 +405,7 @@ class Bleach():
         self.intensityE = intensityE
         self.pixel = pixel
         self.normalizedE = normalizedE
-        # Todo implement getter and setter
+        # TODO implement getter and setter
 
     @property
     def df(self):
@@ -453,10 +451,10 @@ class Bleach():
         if not isinstance(delay, slice):
             raise NotImplementedError('Delay must be slice object')
 
-        index = np.where((self.pixel>pixel.start) & (self.pixel<pixel.stop))[0]
+        index = np.where((self.pixel > pixel.start) & (self.pixel < pixel.stop))[0]
         pixel = (pixel.start, pixel.stop)
 
-        #TODO add pump_width, pump_freq and cc_width
+        # TODO add pump_width, pump_freq and cc_width
         # The zero is needed because self.pixels is per definition a 1D array
 
         trace = np.mean(self.normalized[delay, index], axis=1)
@@ -472,7 +470,7 @@ class Bleach():
     def gaussian_filter1d(self, prop, *args, **kwargs):
         """Return gaussian filtered version of prop."""
         data = getattr(self, prop)
-        return gaussian_filter1d(data *args, **kwargs)
+        return gaussian_filter1d(data, *args, **kwargs)
 
 # TODO: Add type checkers
 class Trace():
@@ -599,6 +597,7 @@ class Trace():
             self._delay = np.array(value)
             if len(self._delay.shape) != 1:
                 raise ValueError("Can't use {} as delay".format(value))
+
     @property
     def df(self):
         """Return a long form pandas dataframe."""

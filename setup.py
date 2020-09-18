@@ -1,6 +1,4 @@
 import setuptools
-from glob import glob
-
 
 requirements = [
     'numpy',

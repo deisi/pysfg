@@ -23,7 +23,7 @@ def from_json(fname):
 
     thismodule = sys.modules[__name__]
     FitClass = getattr(thismodule, d.pop('class'))
-    errors = d.pop('errors')
+    d.pop('errors')
 
     fit = FitClass(
             **d, errordef=1
@@ -63,7 +63,7 @@ class FitBase():
 
     def model(self, *args, **kwargs):
         """This must be implemented by the subcalsses."""
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def dict(self):
@@ -399,7 +399,6 @@ class TraceExponential(FitBase):
         ## This dtype hack is needed because the exp cant get very large.
         return 1/2 * (
             c + c * erf((t - mu)/(np.sqrt(2) * sigma)) -
-            A * np.exp(((sigma**2 - 2 * t * t1 + 2 * mu * t1)/(2 * t1**2)),
-                       dtype=self.fit_func_dtype) *
+            A * np.exp(((sigma**2 - 2 * t * t1 + 2 * mu * t1)/(2 * t1**2))) *
             erfc((sigma**2 - t * t1 + mu * t1)/(np.sqrt(2) * sigma * t1))
         ) + ofs
