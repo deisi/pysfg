@@ -11,6 +11,7 @@ import pandas as pd
 import logging
 import json
 
+
 class BaseSpectrum():
     """Abstract base class for spectral data classes."""
     def __init__(

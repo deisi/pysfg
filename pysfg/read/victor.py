@@ -8,7 +8,6 @@ import os
 PIXEL = 1600  # Number of pixel on camera
 SPECS = 3  # Number of spectra recorded
 
-
 def header(fpath):
     """Read informaion from fileheader and return as dictionary.
 

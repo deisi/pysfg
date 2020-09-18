@@ -1,11 +1,8 @@
-numpy
-matplotlib
-pandas
-altair
-iminuit
-datetime
-os
-glob
-scipy
-pyaml
+numpy>=1.18.5
+matplotlib>=3.3.1
+pandas>=1.0.5
+iminuit>=1.4.5
+scipy>=1.5.0
+pyaml>=19.4.1
+ipython>=7.17.0
 

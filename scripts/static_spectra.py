@@ -9,8 +9,6 @@ of the analysis to this script.
 from pathlib import Path
 import numpy as np
 import pysfg
-import os
-import matplotlib.pyplot as plt
 import yaml
 import logging
 import argparse
