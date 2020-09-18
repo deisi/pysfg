@@ -10,4 +10,3 @@ flycheck_*
 /tests/*.json
 /tests/plot.pdf
 /build/
-/dist/
