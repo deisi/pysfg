@@ -5,13 +5,17 @@
 
 import struct
 import logging
+import locale
 from datetime import datetime, timedelta
 import numpy as np
 from pathlib import Path
 import xmltodict
 
+# spe files use "C" locals for date strings
+locale.setlocale(locale.LC_TIME, 'C')
 logging.getLogger().setLevel(logging.DEBUG)
-# Translate Format.
+# Translate Format dict. Key is the name in the manual, value is the
+# struct version
 tf = {
     "8s": "b",
     "8u": "B",
@@ -41,6 +45,7 @@ header_general = {
 # header information relevant for v3
 # most of the header information has been moved
 # to an xml strucutre at the end of the file
+# e.g. the footer
 elements_v3 = {
     "xml_footer_offset": ("64u", 678),
 }
@@ -55,7 +60,7 @@ header_v2 = {
     "exp_sec": ("32f", 10),
     "VChipXdim": ("16s", 14),
     "VChipYdim": ("16s", 16),
-    "date": ("8s", 20, 10),  # TODO this is a list
+    "date": ("8s", 20, 10),
     "DetTemperature": ("32f", 36),
     "DelayTime": ("32f", 46),
     "ShutterControl": ("16u", 50),
@@ -65,11 +70,11 @@ header_v2 = {
     "SpecGlueEndWlNm": ("32f", 82),
     "SpecGlueMinOvrlpNm": ("32f", 86),
     "SpecGlueFinalResNm": ("32f", 90),
-    "ExperimentTimeLocal": ("8s", 172, 7),  ## TODO This is a list
-    "ExperimentTimeUTC": ("8s", 179, 7),  ## TODO This is a list
+    "ExperimentTimeLocal": ("8s", 172, 7),
+    "ExperimentTimeUTC": ("8s", 179, 7),
     "gain": ("16u" ,198),
     "ReadoutTime": ("32f", 672),
-    "sw_version": ("8s", 688, 16), # TODO this is a list
+    "sw_version": ("8s", 688, 16),
     "NumExpRepeats": ("32u", 1418),
     "NumExpAccums": ("32u", 1422),
     "clkspd_us": ("32f", 1428),
@@ -102,6 +107,12 @@ calibration_x_v2 = {
     "laser_position": ("64f", 3311),
     "new_calib_flag": ("8u", 3320),
 }
+
+
+def _intlist_to_string(list):
+    """Convert a list of integers into a string omitting empty \00 entries."""
+    return "".join([chr(i) for i in list]).strip("\00").strip("\x0b")
+
 
 def _readHeader(fname):
     """Import v2 and v3 SPE binary data"""
@@ -137,9 +148,15 @@ def _readHeader(fname):
             for key, value in elements_v3.items():
                 ret[key] = _read_from_header(*value)
 
+
         if ret['file_header_ver'] < 3:
             for key, value in header_v2.items():
                 ret[key] = _read_from_header(*value)
+
+            # Some entries list of chars are strings
+            for key in ('date', 'ExperimentTimeLocal', 'ExperimentTimeUTC',  'sw_version'):
+                ret[key] = _intlist_to_string(ret[key])
+
 
             for key, value in calibration_x_v2.items():
                 ret['X Calibration'][key] = _read_from_header(*value)
@@ -206,6 +223,8 @@ def _calc_wavelength_from_header(header):
         return wavelength
     raise ValueError('Cound not calculate wavelength from header %s' % header)
 
+
+
 def _readFooter(fname, xml_footer_offset):
     """Read xml data from footer. nBytesFooter is known from header."""
     with open(Path(fname)) as spe:
@@ -223,7 +242,7 @@ def readSpeFile(fname):
     """
     ret = {}
     ret['header'] = _readHeader(fname)
-    ret['data'] = data = _readData(
+    ret['data'] = _readData(
         fname, ret['header']['xdim'], ret['header']['ydim'],
         ret['header']['NumFrames'], ret['header']['datatype']
     )
@@ -247,9 +266,17 @@ def data_file(fpath):
         ret['wavelength'] = _calc_wavelength_from_header(spe['header'])
         ret['gain'] = spe['header']['gain']
         ret['exposureTime'] = spe['header']['exp_sec']
-        ret['date'] = spe['header']['date']  # TODO make this readable format
+        ret['date'] = spe['header']['date']
         ret['tempSet'] = spe['header']['DetTemperature']
         ret['central_wl'] = ret['wavelength'][spe['header']['xdim']//2]
+
+        # Convert Time to datetime objects
+        for key in ('ExperimentTimeLocal', 'ExperimentTimeUTC'):
+            ret[key] = datetime.strptime(
+                spe['header']['date'] + spe['header'][key],
+                "%d%b%Y%H%M%S"
+            )
+
 
     if spe['header']['file_header_ver'] >=3:
         # Organize metadata from footer
@@ -266,6 +293,7 @@ def data_file(fpath):
         ret['tempSet'] = int(temp['SetPoint']['#text'])
         ret['tempRead'] = int(temp['Reading']['#text'])
         ret['roi'] = spe['footer']['SpeFormat']['DataHistories']['DataHistory']['Origin']['Experiment']['Devices']['Cameras']['Camera']['ReadoutControl']['RegionsOfInterest']['Result']['RegionOfInterest']
+        ret['created'] = datetime.strptime(spe["footer"]["SpeFormat"]["DataHistories"]["DataHistory"]["Origin"]["@created"], "%Y-%m-%dT%X.%f%z")
 
     return ret
 

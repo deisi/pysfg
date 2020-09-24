@@ -13,13 +13,12 @@ spec.loader.exec_module(script)
 
 
 class TestScriptStaticSpectra(unittest.TestCase):
-    config_path = Path("./")
     def test_run0(self):
         config = {
             "intensity_data": "data/sc_quartz.dat",
             "out": "delme.json",
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_run1(self):
         config = {
@@ -27,7 +26,7 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "background_data": "data/bg_quartz.dat",
             "out": "delme.json",
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_run2(self):
         config = {
@@ -35,7 +34,7 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "background_data": 300,
             "out": "delme.json",
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_run3(self):
         config = {
@@ -44,7 +43,7 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "norm_data": 1,
             "out": "delme.json",
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_run4(self):
         config = {
@@ -53,7 +52,7 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "norm_data": "delme.json",
             "out": "delme.json",
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_run5(self):
         config = {
@@ -63,7 +62,7 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "calibration": {"vis_wl": 800},
             "out": "delme.json",
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_spe0(self):
         config = {
@@ -72,7 +71,7 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "out": "./results/quartz_spe.json",
             'calibration': {'vis_wl': 800},
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_spe1(self):
         config = {
@@ -83,18 +82,18 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "intensity_selector": {"pixel": [600, 1200]},
             'calibration': {'vis_wl': 800},
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_spe2(self):
-        sp = pysfg.json_to_spectrum("./results/sample_spe.json")
+        sp = pysfg.json_to_spectrum(dir_path / Path("results/sample_spe.json"))
         self.assertEqual(sp.wavenumber.mean(), 2574.93155)
 
     def test_spe3(self):
-        sp = pysfg.json_to_spectrum("./results/sample_spe.json")
+        sp = pysfg.json_to_spectrum(dir_path / Path("results/sample_spe.json"))
         self.assertEqual(sp.basesubed.mean(), 100.25333333333333)
 
     def test_spe4(self):
-        sp = pysfg.json_to_spectrum("./results/sample_spe.json")
+        sp = pysfg.json_to_spectrum(dir_path / Path("results/sample_spe.json"))
         self.assertEqual(sp.normalized.mean(), 0.14295257054703953)
 
     def test_spe5(self):
@@ -104,14 +103,14 @@ class TestScriptStaticSpectra(unittest.TestCase):
             "out": "./results/quartz_v2_spe.json",
             'calibration': {'vis_wl': 800},
         }
-        script.run(config, self.config_path)
+        script.run(config, dir_path)
 
     def test_spe6(self):
-        sp = pysfg.json_to_spectrum("./results/quartz_v2_spe.json")
+        sp = pysfg.json_to_spectrum(dir_path / Path("results/quartz_v2_spe.json"))
         self.assertEqual(sp.basesubed.mean(), 1647.569375)
 
     def test_spe7(self):
-        sp = pysfg.json_to_spectrum("./results/quartz_v2_spe.json")
+        sp = pysfg.json_to_spectrum(dir_path / Path("./results/quartz_v2_spe.json"))
         self.assertEqual(sp.wavenumber.mean(), 1796.63680625)
 
 if __name__ == '__main__':

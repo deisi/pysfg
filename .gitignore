@@ -12,6 +12,5 @@ flycheck_*
 /build/
 /tests/results/gold_spe.json
 /tests/results/quartz_spe.json
-/tests/Explorative_Testing.ipynb
 /tests/results/quartz_v2_spe.json
 /tests/results/sample_spe.json
