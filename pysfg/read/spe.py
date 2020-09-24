@@ -7,6 +7,147 @@ import struct
 import logging
 from datetime import datetime, timedelta
 import numpy as np
+from pathlib import Path
+
+# Translate Format
+tf = {
+    "8s": "b",
+    "8u": "B",
+    "16s": "h",
+    "16u": "H",
+    "32s": "i",
+    "32u": "I",
+    "64s": "q",
+    "64u": "Q",
+    "32f": "f",
+    "64f": "d",
+
+}
+
+def readSpeFile(fname):
+    """Import v2 and v3 SPE binary data"""
+    dataTypeDict = {
+        0 : ('f', 4, 'float32'),  # 32f
+        1 : ('i', 4, 'int32'),  # 32s
+        2 : ('h', 2, 'int16'),  # 16s
+        3 : ('H', 2, 'int32'),  # 16u
+        5 : ('d', 8, 'float64'),  # 64f
+        6 : ('B', 1, 'int8'),  # 
+        8 : ('I', 4, 'int32'),  # 64u
+    }
+    ret = {
+        "Header": {},
+        "X Calibration": {},
+        "Y Calibration": {},
+    }
+    with open(Path(fname), "rb") as spe:
+        # Read Header information
+        # Header length is a fixed number
+        # nBytesHeader = 4100
+        # Read the entire header
+
+        # 4100 is the fixed byte length of the header. This is defined for all spe files.
+        header = spe.read(4100)
+
+        def _read_value_from_header(format, offset):
+            f = tf[format]
+            return struct.unpack_from(f, header, offset)
+
+        def _read_list_from_header(format, offset, length):
+            f = tf[format]
+            f = str(length) + f
+            return struct.unpack_from(f, header, offset)
+
+        header_general = {
+            "file_header_ver": ("32f", 1992),
+            "datatype": ("16s", 108),
+            "xdim": ("16u", 42),
+            "ydim": ("16u", 656),
+            "NumFrames": ("32s", 1446),
+            "xDimDet": ("16u", 6),
+            "yDimDet": ("16u", 18),
+            "lastvalue": ("16s", 4098),
+        }
+        elements_v3 = {
+            "xml_footer_offset": ("64u", 678),
+        }
+        header_v2 = {
+            "ControllerVersion": ("16s", 0),
+            "AmpHiCapLowNoise": ("16u", 4),
+            "mode": ("16s", 8),
+            "exp_sec": ("32f", 10),
+            "VChipXdim": ("16s", 14),
+            "VChipYdim": ("16s", 16),
+            "date": ("8s", 20, 10),  # TODO this is a list
+            "DetTemperature": ("32f", 36),
+            "DelayTime": ("32f", 46),
+            "ShutterControl": ("16u", 50),
+            "SpecCenterWlNm": ("32f", 72),
+            "SpecGlueFlag": ("16s", 76),
+            "SpecGlueStartWlNm": ("32f", 78),
+            "SpecGlueEndWlNm": ("32f", 82),
+            "SpecGlueMinOvrlpNm": ("32f", 86),
+            "SpecGlueFinalResNm": ("32f", 90),
+            "ExperimentTimeLocal": ("8s", 172, 7),  ## TODO This is a list
+            "ExperimentTimeUTC": ("8s", 179, 7),  ## TODO This is a list
+            "gain": ("16u" ,198),
+            "ReadoutTime": ("32f", 672),
+            "sw_version": ("8s", 688, 16), # TODO this is a list
+            "NumExpRepeats": ("32u", 1418),
+            "NumExpAccums": ("32u", 1422),
+            "clkspd_us": ("32f", 1428),
+            "HWaccumFlag": ("16s", 1432),
+            "BlemishApplied": ("16s", 1436),
+            "CosmicApplied": ("16s" ,1438),
+            "CosmicType": ("16s", 1440),
+            "CosmicThreshold": ("32f", 1442),
+            "readoutMode": ("16u", 1480),
+            "WindowSize": ("16u", 1482),
+            "clkspd": ("16u", 1484),
+            "SWmade": ("16u", 1508),
+            "NumROI": ("16s", 1510), # If 0 assume 1
+
+        }
+
+        calibration_x_v2 = {
+            "offset": ("64f", 3000),
+            "factor": ("64f", 3008),
+            "current_unit": ("8s", 3016),
+            "calib_valid": ("8s", 3098),
+            "input_unit": ("8s", 3099),
+            "polynom_unit": ("8s", 3100),
+            "polynom_order": ("8s", 3101),
+            "calib_count": ("8s", 3102),
+            "pixel_position": ("64f", 3103, 10),
+            "calib_value": ("64f", 3183, 10),
+            "polynom_coeff": ("64f", 3263, 6),
+            "laser_position": ("64f", 3311),
+            "new_calib_flag": ("8u", 3320),
+        }
+
+
+        for key, value in header_general.items():
+            ret['Header'][key] = _read_value_from_header(*value)[0]
+
+        if ret['Header']['file_header_ver'] < 3:
+            for key, value in header_v2.items():
+                if len(value) == 2:
+                    ret['Header'][key] = _read_value_from_header(*value)[0]
+                else:
+                    ret['Header'][key] = _read_list_from_header(*value)
+
+            for key, value in calibration_x_v2.items():
+                if len(value) == 2:
+                    ret['X Calibration'][key] = _read_value_from_header(*value)
+                else:
+                    ret['X Calibration'][key] = _read_list_from_header(*value)
+
+
+
+
+    return ret
+
+
 
 class SPEFile():
     """Class to import and read SPE files.
@@ -100,10 +241,6 @@ class SPEFile():
         self._readData()
         self._readFooter()
 
-    def _readFromHeader(self, fmt, offset):
-        """Helper function to read bytes from the header."""
-        return struct.unpack_from(fmt, self._header, offset)
-
     def _readHeader(self):
         """Reads the header."""
         # Header length is a fixed number
@@ -149,7 +286,7 @@ class SPEFile():
             )
         except ValueError:
             logging.debug('Malformated date in %s' % self._fname)
-            logging.debug('date string is: %s' % date)
+            logging.debug('dat7e string is: %s' % date)
 
         self.metadata['gain'] = self._readFromHeader('I', 198)[0]
         # Central Wavelength is in nm
@@ -159,7 +296,6 @@ class SPEFile():
         # in worst case its just pixels
         # Read calib data
         # TODO: This is probably not a good idea
-        self.wavelength = np.arange(self.metadata['xdim'])
         if self.headerVersion >= 3:
             return
         poly_coeff = np.array(self._readFromHeader('6d', 3263))
@@ -167,7 +303,7 @@ class SPEFile():
         params = poly_coeff[np.where(poly_coeff != 0)][::-1]
         if len(params) > 1:
             self.calib_poly = np.poly1d(params)
-            self.wavelength = self.calib_poly(self.wavelength)
+            self.metadata["wavelength"] = self.calib_poly(self.wavelength)
         self.metadata['poly_coeff'] = poly_coeff
 
     def _readData(self):
@@ -247,11 +383,21 @@ class SPEFile():
 def data_file(fpath):
     """Format spe data to be similar to victor.data_file"""
     spe = SPEFile(fpath)
-    return {
+    ret = {
         'raw_data': spe.data,
         # Add the pp_delay axis, as spe data only contains frames.
         'data': np.expand_dims(spe.data, 0),
-        'central_wl': spe.metadata.get('central_wl'),
-        'calib_coeff': spe.metadata.get('poly_coeff'),
         'wavelength': spe.wavelength,
+        'headerVersion': spe.headerVersion,
     }
+    ### add optional metadata
+    keys = (
+        "central_wl", "exposureTime", "tempSet", "gain", "grating", "tempRead",
+        "roi", "xdim", "ydim", "NumFrames", "xDimDet", "yDimDet", "poly_coeff", "date"
+    )
+    for key in keys:
+        value = spe.metadata.get(key)
+        if value:
+            ret[key] = value
+    return ret
+
