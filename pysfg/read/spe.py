@@ -13,7 +13,6 @@ import xmltodict
 
 # spe files use "C" locals for date strings
 locale.setlocale(locale.LC_TIME, 'C')
-logging.getLogger().setLevel(logging.DEBUG)
 # Translate Format dict. Key is the name in the manual, value is the
 # struct version
 tf = {
@@ -271,11 +270,15 @@ def data_file(fpath):
         ret['central_wl'] = ret['wavelength'][spe['header']['xdim']//2]
 
         # Convert Time to datetime objects
+        locale.setlocale(locale.LC_TIME, 'C')
         for key in ('ExperimentTimeLocal', 'ExperimentTimeUTC'):
-            ret[key] = datetime.strptime(
-                spe['header']['date'] + spe['header'][key],
-                "%d%b%Y%H%M%S"
-            )
+            try:
+                ret[key] = datetime.strptime(
+                    spe['header']['date'] + spe['header'][key],
+                    "%d%b%Y%H%M%S"
+                )
+            except ValueError:
+                logging.error('Cant convert date string %s')
 
 
     if spe['header']['file_header_ver'] >=3:
@@ -293,7 +296,10 @@ def data_file(fpath):
         ret['tempSet'] = int(temp['SetPoint']['#text'])
         ret['tempRead'] = int(temp['Reading']['#text'])
         ret['roi'] = spe['footer']['SpeFormat']['DataHistories']['DataHistory']['Origin']['Experiment']['Devices']['Cameras']['Camera']['ReadoutControl']['RegionsOfInterest']['Result']['RegionOfInterest']
-        ret['created'] = datetime.strptime(spe["footer"]["SpeFormat"]["DataHistories"]["DataHistory"]["Origin"]["@created"], "%Y-%m-%dT%X.%f%z")
+        created = spe["footer"]["SpeFormat"]["DataHistories"]["DataHistory"]["Origin"]["@created"]
+        # Split of UTC Time offset and microsecond as they are inconsistent
+        # throught several spe files.
+        ret['created'] = datetime.strptime(created.split(".")[0], "%Y-%m-%dT%X")
 
     return ret
 

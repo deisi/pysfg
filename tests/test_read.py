@@ -1,9 +1,10 @@
 import unittest
-import datetime
+from datetime import datetime
 import pysfg
 import numpy as np
 import os
 from pathlib import Path
+
 
 path = os.path.abspath(__file__)
 dir_path = Path(os.path.dirname(path))
@@ -24,7 +25,15 @@ class TestSpectrum(unittest.TestCase):
 
     def test_spe_data_file(self):
         data = pysfg.read.spe.data_file(dir_path / Path("data/sample.spe"))
+        self.assertEqual(data['wavelength'].mean(), 659.8415138476689)
+        self.assertEqual(data['data'].mean(), 650.79125)
+        self.assertEqual(data['created'], datetime(2018, 7, 26, 17, 18, 17))
 
+    def test_spe_data_file_v2(self):
+        data = pysfg.read.spe.data_file(dir_path / Path("data/sample_v2.spe"))
+        self.assertAlmostEqual(data['data'].mean(), 588.4231, places=4)
+        self.assertAlmostEqual(data['wavelength'].mean(), 699.8086142681037, places=4)
+        self.assertEqual(data['ExperimentTimeLocal'], datetime(2017, 3, 2, 14, 28, 52))
 
 if __name__ == '__main__':
     unittest.main()
