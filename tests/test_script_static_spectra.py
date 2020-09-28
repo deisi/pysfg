@@ -86,15 +86,15 @@ class TestScriptStaticSpectra(unittest.TestCase):
 
     def test_spe2(self):
         sp = pysfg.json_to_spectrum(dir_path / Path("results/sample_spe.json"))
-        self.assertEqual(sp.wavenumber.mean(), 2574.93155)
+        self.assertAlmostEqual(sp.wavenumber.mean(), 2574.9315, 4)
 
     def test_spe3(self):
         sp = pysfg.json_to_spectrum(dir_path / Path("results/sample_spe.json"))
-        self.assertEqual(sp.basesubed.mean(), 100.25333333333333)
+        self.assertAlmostEqual(sp.basesubed.mean(), 100.2533, 4)
 
     def test_spe4(self):
         sp = pysfg.json_to_spectrum(dir_path / Path("results/sample_spe.json"))
-        self.assertEqual(sp.normalized.mean(), 0.14295257054703953)
+        self.assertAlmostEqual(sp.normalized.mean(), 0.14295257054703953)
 
     def test_spe5(self):
         config = {
@@ -111,7 +111,7 @@ class TestScriptStaticSpectra(unittest.TestCase):
 
     def test_spe7(self):
         sp = pysfg.json_to_spectrum(dir_path / Path("./results/quartz_v2_spe.json"))
-        self.assertEqual(sp.wavenumber.mean(), 1796.63680625)
+        self.assertAlmostEqual(sp.wavenumber.mean(), 1796.6368, 4)
 
 if __name__ == '__main__':
     unittest.main()

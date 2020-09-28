@@ -56,8 +56,10 @@ class FitBase():
             yerr = np.ones_like(self.x)
         self.yerr = np.array(yerr)
 
-        # TODO errorbars
         self.lsq = LeastSquares(self.model, self.x, self.y, self.yerr)
+        # set to default to avoid error message
+        if not kwargs.get('errordef'):
+            kwargs['errordef'] = 1
         # get the args from line and strip 'x'
         self.minuit = Minuit(self.lsq, **kwargs)
 

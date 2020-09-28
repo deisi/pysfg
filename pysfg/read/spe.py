@@ -1,14 +1,12 @@
 """Module to import SPE files."""
 
-# TODO: This needs a clean rewrite, where all data is imported into a single
-# dict and that is it. Instead this is a totally bloated class strucutre.
-
 import struct
 import logging
 import locale
-from datetime import datetime, timedelta
-import numpy as np
+from datetime import datetime
+
 from pathlib import Path
+import numpy as np
 import xmltodict
 
 # spe files use "C" locals for date strings
@@ -86,11 +84,10 @@ header_v2 = {
     "WindowSize": ("16u", 1482),
     "clkspd": ("16u", 1484),
     "SWmade": ("16u", 1508),
-    "NumROI": ("16s", 1510), # If 0 assume 1
-
+    "NumROI": ("16s", 1510),  # If 0 assume 1
 }
 
-# The calibration os stored as polynom in the v2 header
+# The calibration is stored as polynom in the v2 header
 calibration_x_v2 = {
     "offset": ("64f", 3000),
     "factor": ("64f", 3008),
@@ -108,36 +105,33 @@ calibration_x_v2 = {
 }
 
 
-def _intlist_to_string(list):
+def _intlist_to_string(llist):
     """Convert a list of integers into a string omitting empty \00 entries."""
-    return "".join([chr(i) for i in list]).strip("\00").strip("\x0b")
+    return "".join([chr(i) for i in llist]).strip("\00").strip("\x0b")
 
 
 def _readHeader(fname):
     """Import v2 and v3 SPE binary data"""
-    ret = {
-        "X Calibration": {},
-        #"Y Calibration": {},  # Not implemented yet
-    }
+    ret = {}
     with open(Path(fname), "rb") as spe:
         # 4100 is the fixed byte length of the header.
         # This is defined for all spe files.
         header = spe.read(4100)
 
-        def _read_value_from_header(format, offset):
-            f = tf[format]
+        def _read_value_from_header(fmt, offset):
+            f = tf[fmt]
             return struct.unpack_from(f, header, offset)[0]
 
-        def _read_list_from_header(format, offset, length):
-            f = tf[format]
+        def _read_list_from_header(fmt, offset, length):
+            f = tf[fmt]
             f = str(length) + f
             return struct.unpack_from(f, header, offset)
 
         def _read_from_header(*args):
             if len(args) == 2:
-                return _read_value_from_header(*value)
+                return _read_value_from_header(*args)
             if len(args) == 3:
-                return _read_list_from_header(*value)
+                return _read_list_from_header(*args)
             raise ValueError('expected two or three arguments got: %s' % args)
 
         for key, value in header_general.items():
@@ -147,16 +141,18 @@ def _readHeader(fname):
             for key, value in elements_v3.items():
                 ret[key] = _read_from_header(*value)
 
-
         if ret['file_header_ver'] < 3:
             for key, value in header_v2.items():
                 ret[key] = _read_from_header(*value)
 
             # Some entries list of chars are strings
-            for key in ('date', 'ExperimentTimeLocal', 'ExperimentTimeUTC',  'sw_version'):
+            for key in (
+                    'date', 'ExperimentTimeLocal', 'ExperimentTimeUTC',
+                    'sw_version'
+            ):
                 ret[key] = _intlist_to_string(ret[key])
 
-
+            ret['X Calibration'] = {}
             for key, value in calibration_x_v2.items():
                 ret['X Calibration'][key] = _read_from_header(*value)
     return ret
@@ -172,13 +168,13 @@ def _readData(fname, xdim, ydim, numFrames, datatype):
 
     """
     dataTypeDict = {
-        0 : ('f', 4, 'float32'),
-        1 : ('i', 4, 'int32'),
-        2 : ('h', 2, 'int16'),
-        3 : ('H', 2, 'int32'),
-        5 : ('d', 8, 'float64'),
-        6 : ('B', 1, 'int8'),
-        8 : ('I', 4, 'int32'),
+        0: ('f', 4, 'float32'),
+        1: ('i', 4, 'int32'),
+        2: ('h', 2, 'int16'),
+        3: ('H', 2, 'int32'),
+        5: ('d', 8, 'float64'),
+        6: ('B', 1, 'int8'),
+        8: ('I', 4, 'int32'),
     }
     nBytesHeader = 4100
     nPixels = xdim * ydim
@@ -196,8 +192,6 @@ def _readData(fname, xdim, ydim, numFrames, datatype):
     data = np.zeros((numFrames, ydim, xdim), dtype=npfmtStr)
     with open(Path(fname), 'rb') as spe:
         spe.seek(nBytesHeader)
-        # Todo read until footer here
-        # self._data = self._spe.read()
         for frame in range(numFrames):
             logging.debug('Read frame number %s' % frame)
             _data = spe.read(nBytesPerFrame)
@@ -208,6 +202,7 @@ def _readData(fname, xdim, ydim, numFrames, datatype):
             dataArr.resize((ydim, xdim))
             data[frame] = dataArr
     return data
+
 
 def _calc_wavelength_from_header(header):
     """calculate wavelength from header information.
@@ -223,21 +218,21 @@ def _calc_wavelength_from_header(header):
     raise ValueError('Cound not calculate wavelength from header %s' % header)
 
 
-
 def _readFooter(fname, xml_footer_offset):
     """Read xml data from footer. nBytesFooter is known from header."""
     with open(Path(fname)) as spe:
         spe.seek(xml_footer_offset)
-        footer = xmltodict.parse(spe.read())
+        footer = xmltodict.parse(spe.read(), dict_constructor=dict)
     return footer
+
 
 def readSpeFile(fname):
     """Raw Spe data file reader.
     fname: Path to .spe file
 
-    return dict with key `data` for the raw rectangular data and `header` for some
-    of the header information. From .spe version 3 also a 'footer' is returned. Where
-    all of the information is in the new .spe case.
+    return dict with key `data` for the raw rectangular data and `header` for
+    some of the header information. From .spe version 3 also a 'footer' is
+    returned. Where all of the information is in the new .spe case.
     """
     ret = {}
     ret['header'] = _readHeader(fname)
@@ -251,7 +246,8 @@ def readSpeFile(fname):
 
 
 def data_file(fpath):
-    """Format spe data to be similar to victor.data_file and subselect only what we need."""
+    """Format spe data to be similar to victor.data_file and subselect
+    only what we need."""
 
     spe = readSpeFile(fpath)
     ret = {
@@ -279,7 +275,6 @@ def data_file(fpath):
                 )
             except ValueError:
                 logging.error('Cant convert date string %s')
-
 
     if spe['header']['file_header_ver'] >=3:
         # Organize metadata from footer
