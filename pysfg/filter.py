@@ -59,3 +59,31 @@ def drift_correction(params, intensity_data, background_data):
     c_factors = np.reshape(c_factors, np.shape(_data)[:2], order='F')
     _data = np.transpose(c_factors.T * _data.T)
     return _data + background_data
+
+
+def heterodyne(data, start, stop, shift=0):
+    """The heterodyne data filter used for phaseresolved data.
+
+    This filter transforms data via ifft, cuts out the part between start and stop,
+    transforms the data back via fft and applies a complex phase shift to the results.
+
+    data: data array
+    start: filter window start
+    stop: filter window stop
+    shift: radiants value for the phase correction of the complex result.
+
+    returns: filtered complex numpy array
+    """
+
+    # data is in frequency domain. Thus fft transforms it into time domain
+    time_domain = np.fft.ifft(data)
+
+    # To avoid overshooting after the fft we cut off exponentialy
+    x = np.arange(len(data))
+    filter_mask = 1/(1+(np.exp((start-x)/0.0025)))-1/(1+(np.exp((stop-x)/0.0025)))
+    time_domain *= filter_mask
+
+    # Apply phase shift
+    ret = fft.fft(time_domain) * np.exp(1j * np.pi * shift)
+
+    return ret
