@@ -30,7 +30,8 @@ setuptools.setup(
             "timescan = scripts.timescan:main",
             "bleach = scripts.bleach:main",
             "trace = scripts.trace:main",
-            "fit_trace = scripts.fit_trace:main"
+            "fit_trace = scripts.fit_trace:main",
+            "psshg = scripts.psshg:main",
         ]
     },
     install_requires=requirements,

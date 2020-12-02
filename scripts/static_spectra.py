@@ -16,6 +16,11 @@ from scipy.stats import sem
 
 
 def run(config, config_path):
+    """Main run loop element.
+
+    config is a dict describing the configuration of this run.
+    config_path is the path of the folder where this configuration file is located.
+    """
     logging.debug(config)
 
     # Read config
@@ -23,11 +28,11 @@ def run(config, config_path):
     intensity_selector = pysfg.SelectorPP(**config.get('intensity_selector', {}))
     background_data = config.get('background_data')
     background_selector = pysfg.SelectorPP(**config.get('background_selector', {}))
-    norm_data =  config.get('norm_data')
+    norm_data = config.get('norm_data')
     calibration_config = config.get('calibration', {})
     out = config_path / Path(config['out'])
 
-    # Shape is unexpected if no spectrum is selected
+    # Need to select a specific spectrum
     if intensity_selector.spectra == slice(None):
         intensity_selector.spectra = 0
     if background_selector.spectra == slice(None):
@@ -40,7 +45,11 @@ def run(config, config_path):
     elif intensity_data.suffix == ".spe":
         intensity_data = pysfg.read.spe.data_file(intensity_data)
     else:
-        raise ValueError("Can't import %s with suffix %s" % (intensity_data, intensity_data.suffix))
+        raise ValueError(
+            "Can't import %s with suffix %s" % (
+                intensity_data, intensity_data.suffix
+            )
+        )
     intensity_data_selected = intensity_data['data'][intensity_selector.tselect]
     logging.info('Using data_select is: \n%s' % intensity_selector)
 
@@ -58,7 +67,8 @@ def run(config, config_path):
         norm_data = norm_data * np.ones_like(intensity_data_selected)
         norm_data = np.median(norm_data, axis=(0, 1))
 
-    # This allows to pass background data as number or as path to data file, or to leave it empty
+    # This allows to pass background data as number or as path to data file, or to leave
+    # it empty
     if not isinstance(background_data, type(None)):
         if isinstance(background_data, str):
             background_data = config_path / Path(background_data)
@@ -77,7 +87,9 @@ def run(config, config_path):
             vis_wl=calibration_config['vis_wl'],
             wavelength=wavelength
         ).wavenumber[intensity_selector.pixel]
-        if calibration_config.get('central_wl') or calibration_config.get('calib_central_wl') or calibration_config.get('calib_coeff'):
+        if calibration_config.get('central_wl') or \
+           calibration_config.get('calib_central_wl') or \
+           calibration_config.get('calib_coeff'):
             raise NotImplementedError('Calibration not fully implemented for .spe files')
     else:
         calibration = pysfg.Calibration(
@@ -88,7 +100,6 @@ def run(config, config_path):
         )
         wavenumber = calibration.wavenumber[intensity_selector.pixel]
         logging.info('Using Calibration with: \n%s' % calibration)
-
 
     intensity = np.median(
         intensity_data_selected,

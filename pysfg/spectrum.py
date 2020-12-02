@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
+from scipy.constants import speed_of_light as c0
+import matplotlib.pyplot as plt
 
 
 class BaseSpectrum():
@@ -146,6 +148,106 @@ class BaseSpectrum():
         data = getattr(self, prop)
         return gaussian_filter1d(data *args, **kwargs)
 
+    def plot(self, x, y, *args, **kwargs):
+        x = str(x)
+        y = str(y)
+        plt.plot(getattr(self, x), getattr(self, y), *args, **kwargs)
+
+class PSSHG():
+    """Phase Resolved SHG spectrum."""
+    def __init__(self, interference, local_oszillator, sample, wavelength=None, mask=None):
+        self.interference = np.array(interference)
+        self.local_oszillator = np.array(local_oszillator)
+        self.sample = np.array(sample)
+        if isinstance(wavelength, type(None)):
+            wavelength = np.arange(len(self.interference))
+        self.wavelength = np.array(wavelength)
+        self.mask = mask
+        self.N = len(self.wavelength)
+
+    @property
+    def mask(self):
+        return self._mask
+
+    @mask.setter
+    def mask(self, value):
+        if isinstance(value, type(None)):
+            self._mask = np.ones_like(self.time_domain, dtype=int)
+        elif isinstance(value, slice):
+            self._mask = np.zeros_like(self.time_domain, dtype=int)
+            self._mask[value] = 1
+        else:
+            self._mask = np.array(value, dtype=int)
+
+    @property
+    def cross_term(self):
+        return self.interference - self.local_oszillator - self.sample
+
+    @property
+    def time_domain(self):
+        """Apply IFFT to signal to convert from frequency to time domain"""
+        # Signal in time domain
+        return np.fft.ifft(self.cross_term)
+
+    @property
+    def time_delay(self):
+        """Calculate the time delay of the time_domain signal. E.g. the pulse delay
+        This calculation assumes that PSSHG.wavelength is in nm."""
+        return np.fft.fftfreq(self.N, np.abs(np.diff(self.THz).mean()))
+
+    @property
+    def spectrum(self):
+        return np.fft.fft(self.time_domain*self.mask)
+
+    @property
+    def df(self):
+        return pd.DataFrame(
+            data=[self.interference, self.local_oszillator, self.sample, self.wavelength, self.mask],
+            index=('interference', 'local_oszillator', 'sample', 'wavelength', 'mask'),
+        )
+
+    def to_json(self, *args, **kwargs):
+        self.df.to_json(*args, **kwargs)
+
+    @property
+    def frequency(self):
+        return c0/self.wavelength * 10**9
+
+    @property
+    def THz(self):
+        return self.frequency * 10**-12
+
+    def plot(self, x, y, *args, **kwargs):
+        x = str(x)
+        y = str(y)
+        plt.plot(getattr(self, x), getattr(self, y), *args, **kwargs)
+
+
+class Normalized_PSSHG():
+    def __init__(self, sample, quarz):
+        self.sample = sample
+        self.quarz = quarz
+
+    @property
+    def spectrum(self):
+        return self.sample.spectrum/self.quarz.spectrum
+
+    @property
+    def cross_term(self):
+        return self.sample.cross_term/self.quarz.cross_term
+
+    @property
+    def wavelength(self):
+        return self.sample.wavelength
+
+    @property
+    def mask(self):
+        return self.sample.mask
+
+    def plot(self, x, y, *args, **kwargs):
+        x = str(x)
+        y = str(y)
+        plt.plot(getattr(self, x), getattr(self, y), *args, **kwargs)
 
 class Spectrum(BaseSpectrum):
     def __init__(self, intensity, baseline=None, norm=None, wavenumber=None,
@@ -205,7 +307,6 @@ class Spectrum(BaseSpectrum):
             np.transpose([getattr(self, name) for name in columns]),
             columns=columns
         )
-
 
 class PumpProbe(BaseSpectrum):
     def __init__(
@@ -728,3 +829,8 @@ def json_to_trace(fname):
     with open(Path(fname)) as f:
         data = json.load(f)
     return Trace(**data)
+
+
+def json_to_PSSHG(*args, **kwargs):
+    data = pd.read_json(*args, **kwargs)
+    return PSSHG(data.loc['interference'], data.loc['local_oszillator'], data.loc['sample'], data.loc['wavelength'], data.loc['mask'])
