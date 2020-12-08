@@ -1,0 +1,8 @@
+data:
+  - pixel_slice: [160, 320]
+    background_data: './00_bg_qz_sin_pout.spe'
+    interference_data: './00_if_qz_sin_pout.spe'
+    local_oszillator_data: './00_lo_qz_sin_pout.spe'
+    sample_shg_data: './00_sa_qz_sin_pout.spe'
+    mask: [4, 70]
+    out: '00_qz_sp.json'

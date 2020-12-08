@@ -1,0 +1,24 @@
+data:
+  - pixel_slice: [160, 320]
+    background_data: '../tests/data/psshg/05_bg_SDS_sin_pout.spe'
+    interference_data: '../tests/data/psshg/05_if_SDS_sin_pout.spe'
+    local_oszillator_data: '../tests/data/psshg/05_lo_SDS_sin_pout.spe'
+    sample_shg_data: '../tests/data/psshg/05_sa_SDS_sin_pout.spe'
+    mask: [4, 70]
+    out: '../tests/data/psshg/05_sds_sp.json'
+
+  - pixel_slice: [160, 320]
+    background_data: '../tests/data/psshg/07_bg_CTAB2_sin_pout.spe'
+    interference_data: '../tests/data/psshg/07_if_CTAB2_sin_pout.spe'
+    local_oszillator_data: '../tests/data/psshg/07_lo_CTAB2_sin_pout.spe'
+    sample_shg_data: '../tests/data/psshg/07_sa_CTAB2_sin_pout.spe'
+    mask: [4, 70]
+    out: '../tests/data/psshg/07_ctab_sp.json'
+
+  - pixel_slice: [160, 320]
+    background_data: '../tests/data/psshg/09_bg_qz_sin_pout.spe'
+    interference_data: '../tests/data/psshg/09_if_qz_sin_pout.spe'
+    local_oszillator_data: '../tests/data/psshg/09_lo_qz_sin_pout.spe'
+    sample_shg_data: '../tests/data/psshg/09_sa_qz_sin_pout.spe'
+    mask: [4, 70]
+    out: '../tests/data/psshg/09_quarz_sp.json'

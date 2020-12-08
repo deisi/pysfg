@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deal with the Phaseresolved SHG setup data."""
+"""Deal with Phaseresolved SHG data."""
 
 
 from pathlib import Path
@@ -40,12 +40,15 @@ def run(config, config_path):
     spectrum = pysfg.spectrum.PSSHG(
         interference_data, local_oszillator_data, sample_shg_data, wavelength, mask=mask
     )
+    logging.info('Saving to %s'%out)
     spectrum.to_json(out)
 
 
 def main():
     """main function taking care of user input and running main loop."""
-    parser = argparse.ArgumentParser(description='Analyse static sfg data.')
+    parser = argparse.ArgumentParser(
+        description='Analyse phase resolved shg data.'
+    )
     parser.add_argument(
         'config',
         help='Path to a yaml configuration file.'
@@ -61,7 +64,8 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     fname = Path(args.config)
-    config_path = fname.parent
+    config_path = Path(fname.parent)
+    print(config_path)
     with open(fname) as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
@@ -71,10 +75,12 @@ def main():
         'calibration', {}
     )
     for data_config in config['data']:
+        logging.info('Running psshg.py')
         # Combine local and global calibration parameters.
         data_config_calibration = dict(data_config.get('calibration', {}))
         data_config['calibration'] = {**calibration_config, **data_config_calibration}
         run(data_config, config_path)
+    logging.info('Done.')
 
 
 if __name__ == "__main__":

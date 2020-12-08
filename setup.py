@@ -13,7 +13,7 @@ requirements = [
 
 setuptools.setup(
      name='pysfg',
-     version='0.1',
+     version='0.2',
      author="Malte Deiseroth",
      author_email="deiseroth@mpip-mainz.mpg.de",
      description="A Package to import and analyse SFG data.",

@@ -1,4 +1,5 @@
-"""Data classes for spectroscopic SFG data"""
+"""Data classes for spectroscopic SFG data
+"""
 
 import logging
 import json
@@ -7,6 +8,7 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 from scipy.constants import speed_of_light as c0
+from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
 
@@ -154,8 +156,22 @@ class BaseSpectrum():
         plt.plot(getattr(self, x), getattr(self, y), *args, **kwargs)
 
 class PSSHG():
-    """Phase Resolved SHG spectrum."""
-    def __init__(self, interference, local_oszillator, sample, wavelength=None, mask=None):
+    def __init__(self, interference, local_oszillator, sample, wavelength=None, mask=None, reference=None):
+        """
+        Phase Resolved SHG spectrum class.
+
+        The `pysfg/scripts/psshg.py` script contains some code using this class.
+
+        *Arguments*
+        interference: 1D array of background subtracted interference data
+        local_oszillator: 1D array with intensity of local oszillator.
+        sample: 1D array with sample shg spectrum
+        wavelength: 1D array with wavelength in nm according to pixel axis.
+        mask: slice or array to mask time_domain data (after fft) with. This mask is used
+          to filter the data in the time domain with.
+        reference: Complex 1D array reference to determine phaseshift to.
+
+        """
         self.interference = np.array(interference)
         self.local_oszillator = np.array(local_oszillator)
         self.sample = np.array(sample)
@@ -164,9 +180,13 @@ class PSSHG():
         self.wavelength = np.array(wavelength)
         self.mask = mask
         self.N = len(self.wavelength)
+        self.reference = reference
+        self._phaseshift = None
+        self._amplitude = None
 
     @property
     def mask(self):
+        """Array to mask `PSSHG.time_domain` with."""
         return self._mask
 
     @mask.setter
@@ -180,13 +200,29 @@ class PSSHG():
             self._mask = np.array(value, dtype=int)
 
     @property
+    def reference(self):
+        """Reference spectrum to determine phaseshift to. If None is given. The spectrum is referenced to itself, resulting in a phaseshift of 0."""
+        return self._reference
+
+    @reference.setter
+    def reference(self, value):
+        if isinstance(value, type(None)):
+            self._reference = self.spectrum
+        else:
+            self._reference = np.array(value)
+
+    @property
     def cross_term(self):
+        """The `PSSHG.cross_term` is what is left after local oszillator
+        and sample spectral contributions are subtracted from the interferencedata"""
         return self.interference - self.local_oszillator - self.sample
 
     @property
     def time_domain(self):
-        """Apply IFFT to signal to convert from frequency to time domain"""
+        """An FFT of the `PSSHG.cross_term` transfroms the spectral data into time domain."""
         # Signal in time domain
+        # The use of ifft instead of fft is not important. It gives just nicer numbers
+        # here.
         return np.fft.ifft(self.cross_term)
 
     @property
@@ -197,54 +233,68 @@ class PSSHG():
 
     @property
     def spectrum(self):
+        """The complex ps-shg spectrum measured."""
         return np.fft.fft(self.time_domain*self.mask)
 
     @property
     def df(self):
+        """A dataframe representation of the complete raw data of this `PSSHG` object.
+        Can be used for easy exporting and importing.
+        """
         return pd.DataFrame(
-            data=[self.interference, self.local_oszillator, self.sample, self.wavelength, self.mask],
-            index=('interference', 'local_oszillator', 'sample', 'wavelength', 'mask'),
+            data=[self.interference, self.local_oszillator, self.sample, self.wavelength, self.mask, self.reference.imag, self.reference.real],
+            index=('interference', 'local_oszillator', 'sample', 'wavelength', 'mask', 'reference.imag', 'reference.real'),
         )
 
     def to_json(self, *args, **kwargs):
+        """Save the PSSHG as pandas dataframe into a json file under the in given path."""
         self.df.to_json(*args, **kwargs)
 
     @property
     def frequency(self):
+        """Frequency in 1/s assuming that wavelength is given in nm."""
         return c0/self.wavelength * 10**9
 
     @property
     def THz(self):
+        """Frequency in THz, assumging wavelength is in nm."""
         return self.frequency * 10**-12
 
+    def minimize_phaseshift(self, **kwargs):
+        def chi2(x0): # Only one argument is allowed for minimization here
+            phase, A = x0
+            diff = A*self.spectrum*np.e**(1j*phase)-self.reference
+            return np.sum(diff.real**2 + diff.imag**2)
+        x0 = [0, 1]  # starting values
+        bounds=[(0, 2*np.pi), (0, None)]  # Boundaries
+        return minimize(chi2, x0, bounds=bounds, **kwargs)
+
+    @property
+    def phaseshift(self):
+        """Calculate relative phaseshift of spectrum and reference data in radiance"""
+        if not self._phaseshift:
+            self._phaseshift = self.minimize_phaseshift().x[0]
+        return self._phaseshift
+
+    @property
+    def amplitude(self):
+        """The amplitude used for the phaseshift minimization."""
+        if not self._amplitude:
+            self._amplitude = self.minimize_phaseshift().x[1]
+        return self._amplitude
+
+    @property
+    def phaseshift_degree(self):
+        """Phaseshift in Degrees"""
+        return self.phaseshift*180/np.pi
+
+    @property
+    def spectrum_phaseshifted(self):
+        """Phase shift spectrum to match reference spectrum."""
+        return self.spectrum*np.e**(1j*self.phaseshift)
+
     def plot(self, x, y, *args, **kwargs):
-        x = str(x)
-        y = str(y)
-        plt.plot(getattr(self, x), getattr(self, y), *args, **kwargs)
-
-
-class Normalized_PSSHG():
-    def __init__(self, sample, quarz):
-        self.sample = sample
-        self.quarz = quarz
-
-    @property
-    def spectrum(self):
-        return self.sample.spectrum/self.quarz.spectrum
-
-    @property
-    def cross_term(self):
-        return self.sample.cross_term/self.quarz.cross_term
-
-    @property
-    def wavelength(self):
-        return self.sample.wavelength
-
-    @property
-    def mask(self):
-        return self.sample.mask
-
-    def plot(self, x, y, *args, **kwargs):
+        """A simple plot function."""
         x = str(x)
         y = str(y)
         plt.plot(getattr(self, x), getattr(self, y), *args, **kwargs)
@@ -832,5 +882,10 @@ def json_to_trace(fname):
 
 
 def json_to_PSSHG(*args, **kwargs):
-    data = pd.read_json(*args, **kwargs)
-    return PSSHG(data.loc['interference'], data.loc['local_oszillator'], data.loc['sample'], data.loc['wavelength'], data.loc['mask'])
+    df = pd.read_json(*args, **kwargs)
+    data = {index: df.loc[index] for index in df.index}
+    if not isinstance(data.get('reference.real'), type(None)):
+        real = data.pop('reference.real')
+        imag = data.pop('reference.imag')
+        data['reference'] = np.array(real + 1j*imag)
+    return PSSHG(**data)
