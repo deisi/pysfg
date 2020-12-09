@@ -206,6 +206,8 @@ class PSSHG():
 
     @reference.setter
     def reference(self, value):
+        self._phaseshift = None
+        self._amplitude = None
         if isinstance(value, type(None)):
             self._reference = self.spectrum
         else:
@@ -260,14 +262,16 @@ class PSSHG():
         """Frequency in THz, assumging wavelength is in nm."""
         return self.frequency * 10**-12
 
-    def minimize_phaseshift(self, **kwargs):
+    def minimize_phaseshift(self, x0=[0, 1], bounds=[(-np.pi, np.pi), (0, None)], **kwargs):
         def chi2(x0): # Only one argument is allowed for minimization here
             phase, A = x0
             diff = A*self.spectrum*np.e**(1j*phase)-self.reference
             return np.sum(diff.real**2 + diff.imag**2)
-        x0 = [0, 1]  # starting values
-        bounds=[(0, 2*np.pi), (0, None)]  # Boundaries
-        return minimize(chi2, x0, bounds=bounds, **kwargs)
+          # Boundaries
+        ret = minimize(chi2, x0, bounds=bounds, **kwargs)
+        self._phaseshift = ret.x[0]
+        self._amplitude = ret.x[1]
+        return ret
 
     @property
     def phaseshift(self):
