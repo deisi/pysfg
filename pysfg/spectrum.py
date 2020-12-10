@@ -297,6 +297,38 @@ class PSSHG():
         """Phase shift spectrum to match reference spectrum."""
         return self.spectrum*np.e**(1j*self.phaseshift)
 
+    def shift_spectrum(self, phaseshift=None, amplitude=None):
+        """Phase and Amplitude Shifted version of the spectrum
+
+        phase: Phase to shift the spectrum by in radiance. If None `self.phaseshift` is used.
+        amplitude: Amplitude to shift change the spectrum by. If None `self.amplitude` is used.
+        """
+        if not phaseshift:
+            phaseshift = self.phaseshift
+        if not amplitude:
+            amplitude = self.amplitude
+        return self.spectrum*np.e**(1j*phaseshift)*amplitude
+
+    @property
+    def spectrum_normalized(self):
+        """Normalize complex spectrum by complex reference."""
+        return self.spectrum/self.reference
+
+    @property
+    def spectrum_phase(self):
+        """Phase(angle) of the complex normalized spectrum"""
+        return np.angle(self.spectrum_normalized)
+
+    @property
+    def spectrum_phase_degree(self):
+        """Phase(angle) of the complex normalized spectrum in degrees"""
+        return np.angle(self.spectrum_normalized)*180/np.pi
+
+    @property
+    def spectrum_amplitude(self):
+        """Amplitude of the complex normalized spectrum."""
+        return np.absolute(self.spectrum_normalized)
+
     def plot(self, x, y, *args, **kwargs):
         """A simple plot function."""
         x = str(x)
