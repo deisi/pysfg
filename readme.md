@@ -36,7 +36,18 @@ A toolkit to help analysing pump probe sfg data.
 - `scripts`
   
   A collection of user ready scripts. The scripts is what you as the user want to work with. Each script takes a specific `configuration.yaml` file as input and generates time results in the form of `.json` files. These `.json` files can then be used to further data processing.
-
+  - `static_spectra.py`
+    Script to help analyse static SFG data. I can be used to automatically averade frames, subtract the background and normalize to a reference.
+  - `timescan.py`
+    Script that deals with time stability of data. It basically looks at the integrated Intensity vs measurement time.
+  - `bleach.py`
+    Script to calculate the bleach of a pump-probe sfg measurement.
+  - `trace.py`
+    Uses the result of bleach to generate pump-probe traces.
+  - `fit_trace.py`
+    Uses the result of trace, to fit the trace with e.g. the nummerical solutioin of the four-level-model
+  - `psshg.py`
+    Script to analyse phase-resolve second harmonic data as produced by e.g. Merlin
 - `tests`
   
   A folder with a bunch of unittests. Before codechanges are commited. One has to run: `python -m unittests discover -s tests` and pass all tests.
