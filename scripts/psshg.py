@@ -20,6 +20,9 @@ def run(config, config_path):
     local_oszillator_data = config_path / Path(config['local_oszillator_data'])
     sample_shg_data = config_path / Path(config['sample_shg_data'])
     background_offset = config.get('background_offset', {})
+    reference = config.get('reference')
+    if reference:
+        reference = config_path / Path(reference)
     mask = config.get('mask')
     out = config_path / Path(config['out'])
 
@@ -35,10 +38,13 @@ def run(config, config_path):
     local_oszillator_data = np.median(local_oszillator_data['raw_data'], [0, 1])[pixel_slice] - background_data + background_offset.get('local_oszillator', 0)
     sample_shg_data = pysfg.read.spe.data_file(sample_shg_data)
     sample_shg_data = np.median(sample_shg_data['raw_data'], [0, 1])[pixel_slice] - background_data + background_offset.get('sample_shg', 0)
+    if reference:
+        reference = pysfg.json_to_PSSHG(reference).spectrum
 
     # correct for LO and Sample SHG contributions
     spectrum = pysfg.spectrum.PSSHG(
-        interference_data, local_oszillator_data, sample_shg_data, wavelength, mask=mask
+        interference_data, local_oszillator_data, sample_shg_data,
+        wavelength, mask=mask, reference=reference
     )
     logging.info('Saving to %s'%out)
     spectrum.to_json(out)
